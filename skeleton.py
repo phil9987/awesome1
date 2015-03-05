@@ -13,24 +13,28 @@ def logscore(gtruth,gpred):
     return np.sqrt(np.mean(np.square(logdif)))
 
 
-def get_features(t):
-    return [1, t, np.power(t,2), np.power(t,3)]
+def get_features(x):
+    return [1, x[0], x[1], x[0]*x[0], x[1]*x[1], x[0]*x[1]]
     #return [t, np.power(t,2)]
     #return [t,t^2 + 5*t + 5]
 
 def read_path(inpath):
     X = []
     n = 0
-    c = (3+6)*len(get_features(1)) # number of features * columns per feature
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
+            x = []
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            X.append(get_features(t.year))
-            X.append(get_features(t.hour))
-            X.append(get_features(t.weekday()))
+#            x.append(t.year-2014)
+#            x.append((t.month-1)/6-1)
+            x.append(t.weekday()/3-1)
+            x.append(t.hour/12-1)
             for i in range(6):
-                X.append(get_features(float(row[i+1])))
+                x = x
+#                x.append(get_features(float(row[i+1])))
+            c = len(get_features(x))
+            X.append(get_features(x))
             n = n+1
     return np.reshape(X, [n, c])
 
@@ -40,7 +44,7 @@ def linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval):
     regressor.fit(Xtrain,Ytrain)
     print 'regressor.coef_: ', regressor.coef_
     print 'regressor.intercept_: ', regressor.intercept_
-    Hplot = range(25)
+    #Hplot = range(25)
     #Xplot = np.atleast_2d([get_features(x) for x in Hplot])
     #Yplot = regressor.predict(Xplot)                # predictions
     #plt.plot(Xtrain[:,0], Ytrain, 'bo')             # input data
@@ -56,7 +60,7 @@ def ridge_regression(X,Y,Xtrain,Ytrain,Xval):
     regressor_ridge = sklin.Ridge()
     param_grid = {'alpha' : np.linspace(0,100,10)}              # number of alphas is arbitrary
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 10)
+    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 5)
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     print 'grid_search.best_score_: ', grid_search.best_score_
