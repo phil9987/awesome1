@@ -59,10 +59,10 @@ def main():
     grid_search.fit(Xtrain,Ytrain)
     print grid_search.best_estimator_
     print grid_search.best_score_
-    Xval = read_path('validate.csv')
+    Xval = read_path('project_data/validate.csv')
     Ypred = grid_search.best_estimator_.predict(Xval)
     print Ypred
-    np.savetxt('validate_y.txt', Ypred)
+    np.savetxt('project_data/validate_y.txt', Ypred)
 
 if __name__ == "__main__":
     main()
