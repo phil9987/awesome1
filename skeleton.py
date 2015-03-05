@@ -14,14 +14,14 @@ def logscore(gtruth,gpred):
 
 
 def get_features(t):
-    return [t, np.power(t,2)]
+    return [1, t, np.power(t,2), np.power(t,3)]
+    #return [t, np.power(t,2)]
     #return [t,t^2 + 5*t + 5]
-    #return [t,t]
 
 def read_path(inpath):
     X = []
     n = 0
-    c = (3+6)*2 # number of features * columns per feature
+    c = (3+6)*len(get_features(1)) # number of features * columns per feature
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
@@ -32,23 +32,10 @@ def read_path(inpath):
             for i in range(6):
                 X.append(get_features(float(row[i+1])))
             n = n+1
-    print np.matrix(X).shape
     return np.reshape(X, [n, c])
 
 
-def main():
-    X = read_path('project_data/train.csv')
-    Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
-    print 'X.shape :', X.shape
-    print 'Y.shape :', Y.shape
-
-    # always split training and test data!
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
-    print 'Xtrain.shape :', Xtrain.shape
-    print 'Xtest.shape :', Xtest.shape
-    #plt.plot(Xtrain[:,0], Ytrain, 'bo')
-    #plt.show()
-
+def linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval):
     regressor = sklin.LinearRegression()
     regressor.fit(Xtrain,Ytrain)
     print 'regressor.coef_: ', regressor.coef_
@@ -63,22 +50,37 @@ def main():
     scorefunction = skmet.make_scorer(logscore)
     scores = skcv.cross_val_score(regressor,X,Y,scoring=scorefunction,cv = 10)
     print 'mean : ', np.mean(scores),' +/- ' ,np.std(scores)
+    return regressor.predict(Xval)
 
+def ridge_regression(X,Y,Xtrain,Ytrain,Xval):
     regressor_ridge = sklin.Ridge()
     param_grid = {'alpha' : np.linspace(0,100,10)}              # number of alphas is arbitrary
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 5)
+    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     print 'grid_search.best_score_: ', grid_search.best_score_
-    Xval = read_path('project_data/validate.csv')
     Ypred = grid_search.best_estimator_.predict(Xval)
     #Yplot = grid_search.best_estimator_.predict(Xplot)                #predictions
 
     plt.plot(Xtrain[:,0], Ytrain, 'bo')             #input data
     #plt.plot(Hplot,Yplot,'r',linewidth = 3)         #prediction
     plt.show()
-    print 'Ypred: ', Ypred
+    return Ypred
+
+
+def main():
+    X = read_path('project_data/train.csv')
+    Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
+    Xval = read_path('project_data/validate.csv')
+
+    # always split training and test data!
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
+
+    #linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval)
+
+    Ypred = ridge_regression(X,Y,Xtrain,Ytrain,Xval)
+
     np.savetxt('project_data/validate_y.txt', Ypred)
 
 if __name__ == "__main__":
