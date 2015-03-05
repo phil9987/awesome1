@@ -12,6 +12,7 @@ def logscore(gtruth,gpred):
     logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
+
 def get_features(t):
     return [t, np.exp(t)]
     #return [t,t^2 + 5*t + 5]
@@ -35,25 +36,25 @@ def read_path(inpath):
 def main():
     X = read_path('project_data/train.csv')
     Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
-    print X.shape
-    print Y.shape
+    print 'X.shape :', X.shape
+    print 'Y.shape :', Y.shape
 
-    #always split training and test data!
+    # always split training and test data!
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
-    print Xtrain.shape
-    print Xtest.shape
+    print 'Xtrain.shape :', Xtrain.shape
+    print 'Xtest.shape :', Xtest.shape
     #plt.plot(Xtrain[:,0], Ytrain, 'bo')
     #plt.show()
 
     regressor = sklin.LinearRegression()
     regressor.fit(Xtrain,Ytrain)
-    print regressor.coef_
-    print regressor.intercept_
+    print 'regressor.coef_: ', regressor.coef_
+    print 'regressor.intercept_: ', regressor.intercept_
     Hplot = range(25)
     Xplot = np.atleast_2d([get_features(x) for x in Hplot])
-    Yplot = regressor.predict(Xplot)                #predictions
-    #plt.plot(Xtrain[:,2], Ytrain, 'bo')             #input data
-    #plt.plot(Hplot,Yplot,'r',linewidth = 3)         #prediction
+    Yplot = regressor.predict(Xplot)                # predictions
+    #plt.plot(Xtrain[:,0], Ytrain, 'bo')             # input data
+    #plt.plot(Hplot,Yplot,'r',linewidth = 3)         # prediction
     #plt.show()
     logscore(Ytest,regressor.predict(Xtest))
     scorefunction = skmet.make_scorer(logscore)
@@ -61,12 +62,12 @@ def main():
     print 'mean : ', np.mean(scores),' +/- ' ,np.std(scores)
 
     regressor_ridge = sklin.Ridge()
-    param_grid = {'alpha' : np.linspace(0,10,100)} # number of alphas is arbitrary
-    n_scorefunction = skmet.make_scorer(lambda x, y: -logscore(x,y))     #logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid,scoring = n_scorefunction, cv = 10)
+    param_grid = {'alpha' : np.linspace(0,100,10)}              # number of alphas is arbitrary
+    n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
+    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 5)
     grid_search.fit(Xtrain,Ytrain)
-    print grid_search.best_estimator_
-    print grid_search.best_score_
+    print 'grid_search.best_estimator_: ', grid_search.best_estimator_
+    print 'grid_search.best_score_: ', grid_search.best_score_
     Xval = read_path('project_data/validate.csv')
     Ypred = grid_search.best_estimator_.predict(Xval)
     Yplot = grid_search.best_estimator_.predict(Xplot)                #predictions
@@ -74,7 +75,7 @@ def main():
     plt.plot(Xtrain[:,0], Ytrain, 'bo')             #input data
     plt.plot(Hplot,Yplot,'r',linewidth = 3)         #prediction
     plt.show()
-    print Ypred
+    print 'Ypred: ', Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
 
 if __name__ == "__main__":
