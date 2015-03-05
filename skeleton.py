@@ -14,6 +14,7 @@ def logscore(gtruth,gpred):
 def get_features(t):
     return [t, np.exp(t)]
 
+
 def read_path(inpath):
     X = []
     with open(inpath,'r') as fin:
