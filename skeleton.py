@@ -14,42 +14,30 @@ def logscore(gtruth,gpred):
 
 
 def get_features(t):
-    return [t, np.exp(t)]
+    return [t, np.power(t,2)]
     #return [t,t^2 + 5*t + 5]
     #return [t,t]
 
 def read_path(inpath):
     X = []
-    X2 = []
-    with open(inpath,'r') as fin:
-        reader = csv.reader(fin, delimiter=',')
-        for row in reader:
-            t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            X.append(get_features(t.hour))
-            X2.append(row[1:7])
-        A = np.vstack((X2))
-        A = np.hstack((X,X2))
-        print A.shape
-        print A[0]
-    return np.atleast_2d(X)
-
-def read_path_tim(inpath):
-    X = []
     n = 0
-    c = 4 # number of features * columns per feature
+    c = (3+6)*2 # number of features * columns per feature
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
+            X.append(get_features(t.year))
             X.append(get_features(t.hour))
             X.append(get_features(t.weekday()))
+            for i in range(6):
+                X.append(get_features(float(row[i+1])))
             n = n+1
     print np.matrix(X).shape
-    return np.reshape(X, [n, 4])
+    return np.reshape(X, [n, c])
 
 
 def main():
-    X = read_path_tim('project_data/train.csv')
+    X = read_path('project_data/train.csv')
     Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
     print 'X.shape :', X.shape
     print 'Y.shape :', Y.shape
@@ -83,7 +71,7 @@ def main():
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     print 'grid_search.best_score_: ', grid_search.best_score_
-    Xval = read_path_tim('project_data/validate.csv')
+    Xval = read_path('project_data/validate.csv')
     Ypred = grid_search.best_estimator_.predict(Xval)
     #Yplot = grid_search.best_estimator_.predict(Xplot)                #predictions
 
