@@ -25,8 +25,8 @@ def read_path(inpath):
     return np.atleast_2d(X)
 
 def main():
-    X = read_path('train.csv')
-    Y = np.genfromtxt('train_y.csv',delimiter = ',')
+    X = read_path('project_data/train.csv')
+    Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
     print X.shape
     print Y.shape
 
