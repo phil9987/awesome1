@@ -14,8 +14,9 @@ def logscore(gtruth,gpred):
 
 
 def get_features(x):
-    return [1, x[0], x[1], x[0]*x[0], x[1]*x[1], x[0]*x[1]]
-    #return [t, np.power(t,2)]
+    return x
+#   return [1, x[0], x[1], x[0]*x[0], x[1]*x[1], x[0]*x[1]]
+#   return [x[0], np.power(x[0],2)]
     #return [t,t^2 + 5*t + 5]
 
 def read_path(inpath):
@@ -26,20 +27,21 @@ def read_path(inpath):
         for row in reader:
             x = []
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-#            x.append(t.year-2014)
-#            x.append((t.month-1)/6-1)
-            x.append(t.weekday()/3-1)
-            x.append(t.hour/12-1)
+#           x.append(t.year-2014)
+            x.append((float(t.month)-6.5)/3.43)
+#           x.append((float(t.day)-15.6)/8.76)
+            x.append((float(t.hour)-11.6)/6.93)
+            x.append((float(row[1])-0.5)/0.234)
             for i in range(6):
                 x = x
-#                x.append(get_features(float(row[i+1])))
+#                x.append(float(row[i+1]))
             c = len(get_features(x))
             X.append(get_features(x))
             n = n+1
     return np.reshape(X, [n, c])
 
 
-def linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval):
+def linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest,Xval):
     regressor = sklin.LinearRegression()
     regressor.fit(Xtrain,Ytrain)
     print 'regressor.coef_: ', regressor.coef_
@@ -56,7 +58,7 @@ def linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval):
     print 'mean : ', np.mean(scores),' +/- ' ,np.std(scores)
     return regressor.predict(Xval)
 
-def ridge_regression(X,Y,Xtrain,Ytrain,Xval):
+def ridge_regression(Xtrain,Ytrain,Xval):
     regressor_ridge = sklin.Ridge()
     param_grid = {'alpha' : np.linspace(0,100,10)}              # number of alphas is arbitrary
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
@@ -77,13 +79,14 @@ def main():
     X = read_path('project_data/train.csv')
     Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
     Xval = read_path('project_data/validate.csv')
+    print X
 
     # always split training and test data!
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
 
-    #linear_regression(Xtrain,Ytrain,Xtest,Ytest,Xval)
+    linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest,Xval)
 
-    Ypred = ridge_regression(X,Y,Xtrain,Ytrain,Xval)
+    Ypred = ridge_regression(Xtrain,Ytrain,Xval)
 
     np.savetxt('project_data/validate_y.txt', Ypred)
 
