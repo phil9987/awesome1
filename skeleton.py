@@ -33,8 +33,23 @@ def read_path(inpath):
         print A[0]
     return np.atleast_2d(X)
 
+def read_path_tim(inpath):
+    X = []
+    n = 0
+    c = 4 # number of features * columns per feature
+    with open(inpath,'r') as fin:
+        reader = csv.reader(fin, delimiter=',')
+        for row in reader:
+            t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
+            X.append(get_features(t.hour))
+            X.append(get_features(t.weekday()))
+            n = n+1
+    print np.matrix(X).shape
+    return np.reshape(X, [n, 4])
+
+
 def main():
-    X = read_path('project_data/train.csv')
+    X = read_path_tim('project_data/train.csv')
     Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
     print 'X.shape :', X.shape
     print 'Y.shape :', Y.shape
@@ -51,12 +66,12 @@ def main():
     print 'regressor.coef_: ', regressor.coef_
     print 'regressor.intercept_: ', regressor.intercept_
     Hplot = range(25)
-    Xplot = np.atleast_2d([get_features(x) for x in Hplot])
-    Yplot = regressor.predict(Xplot)                # predictions
+    #Xplot = np.atleast_2d([get_features(x) for x in Hplot])
+    #Yplot = regressor.predict(Xplot)                # predictions
     #plt.plot(Xtrain[:,0], Ytrain, 'bo')             # input data
     #plt.plot(Hplot,Yplot,'r',linewidth = 3)         # prediction
     #plt.show()
-    logscore(Ytest,regressor.predict(Xtest))
+    print 'score on Xtest,Ytest: ', logscore(Ytest,regressor.predict(Xtest))
     scorefunction = skmet.make_scorer(logscore)
     scores = skcv.cross_val_score(regressor,X,Y,scoring=scorefunction,cv = 10)
     print 'mean : ', np.mean(scores),' +/- ' ,np.std(scores)
@@ -68,12 +83,12 @@ def main():
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     print 'grid_search.best_score_: ', grid_search.best_score_
-    Xval = read_path('project_data/validate.csv')
+    Xval = read_path_tim('project_data/validate.csv')
     Ypred = grid_search.best_estimator_.predict(Xval)
-    Yplot = grid_search.best_estimator_.predict(Xplot)                #predictions
+    #Yplot = grid_search.best_estimator_.predict(Xplot)                #predictions
 
     plt.plot(Xtrain[:,0], Ytrain, 'bo')             #input data
-    plt.plot(Hplot,Yplot,'r',linewidth = 3)         #prediction
+    #plt.plot(Hplot,Yplot,'r',linewidth = 3)         #prediction
     plt.show()
     print 'Ypred: ', Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
