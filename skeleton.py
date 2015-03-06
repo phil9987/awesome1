@@ -94,7 +94,7 @@ def ridge_regression(Xtrain,Ytrain,Xval):
     regressor_ridge = sklin.Ridge(fit_intercept=False, normalize=True)
     param_grid = {'alpha' : np.linspace(0,5,100)}
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 100)
+    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     Ypred = grid_search.best_estimator_.predict(Xval)
