@@ -10,9 +10,11 @@ from sklearn.svm import SVR
 
 from numpy.polynomial.polynomial import Polynomial, polyval
 
+# TODO: Revert the scoring, so that it corresponds to a least square
 def logscore(gtruth,gpred):
     gpred = np.clip(gpred,0,np.inf)
-    logdif = np.log(1 + gtruth) - np.log(1 + gpred)
+    logdif = np.log(1 + np.exp(gtruth)) - np.log(1 + np.exp(gpred))
+#   logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
 def eval_poly3d(x):
@@ -41,24 +43,28 @@ def eval_custom(x):
 def get_features(x):
     return eval_custom(np.array(x))
 
+def get_features_poly(x,d):
+    y = []
+    for i in range(d):
+        y.append(np.power(x, i+1))
+    return y
+
+def get_features_exp(x):
+    y = [x, np.exp(x)]
+    return y
+
 def read_path(inpath):
     X = []
-    n = 0
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
-            x = []
+            x = [1] # just an offset
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
             (isoy, isow, isowd) = t.isocalendar()
-#           x.append(t.year-2014)
-            #x.append((float(t.month)))
-            #x.append((float(isow)))
-            #x.append((float(t.hour)))
-            #x.append((float(row[1])))
-            x.append((float(t.month)-6.5)/3.43)
-            x.append((float(isow)-26.74)/15)
-            x.append((float(t.hour)-11.6)/6.93)
-            x.append((float(row[1])-0.5)/0.234)
+#            x.append((float(t.month)-6.5)/3.43)
+#           x.append((float(isow)-26.74)/15)
+#           x.append((float(t.hour)-11.6)/6.93)
+#           x.append((float(row[1])-0.5)/0.234)
 #           x.append((float(isowd)-3.98)/2)
 #           x.append((float(t.day)-15.6)/8.76)
 #           x.append((float(row[2])-2.09)/0.765)
@@ -66,33 +72,32 @@ def read_path(inpath):
 #           x.append((float(row[4])-18.04)/2.87)
 #           x.append((float(row[5])-0.20)/0.14)
 #           x.append((float(row[6])-0.623)/0.233)
-            c = len(get_features(x))
-            X.append(get_features(x))
-            n = n+1
-    return np.reshape(X, [n, c])
+#           x.extend(get_features_poly((float(t.month)-6.5)/3.43, 3))
+#           x.extend(get_features_poly((float(t.hour)-11.6)/6.93, 15))
+#           x.extend(get_features_poly((float(row[1])-0.5)/0.234, 9))
+#           x.extend(get_features_poly((float(row[3])-0.477)/0.207, 5))
+            x.extend(get_features_poly(float(isow-3.98)/2, 6))
+            x.extend(get_features_poly(float(t.hour-11.6)/6.93, 15))
+            x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
+            x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
+#           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
+            X.append(x)
+    return np.matrix(X)
 
 
-def linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest,Xval):
+def linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest):
     regressor = sklin.LinearRegression()
     regressor.fit(Xtrain,Ytrain)
     print 'regressor.coef_: ', regressor.coef_
     print 'regressor.intercept_: ', regressor.intercept_
-    #Hplot = range(25)
-    #Xplot = np.atleast_2d([get_features(x) for x in Hplot])
-    #Yplot = regressor.predict(Xplot)                # predictions
-    #plt.plot(Xtrain[:,0], Ytrain, 'bo')             # input data
-    #plt.plot(Hplot,Yplot,'r',linewidth = 3)         # prediction
-    #plt.show()
-    print 'lin score on Xtrain,Ytrain: ', logscore(Ytrain,regressor.predict(Xtrain))
-    print 'lin score on Xtest,Ytest: ', logscore(Ytest,regressor.predict(Xtest))
     scorefunction = skmet.make_scorer(logscore)
     scores = skcv.cross_val_score(regressor,X,Y,scoring=scorefunction,cv = 10)
     print 'mean : ', np.mean(scores),' +/- ' , np.std(scores)
-    return regressor.predict(Xval)
+    return regressor
 
 def ridge_regression(Xtrain,Ytrain,Xval):
-    regressor_ridge = sklin.Ridge(fit_intercept=False, normalize=True)
-    param_grid = {'alpha' : np.linspace(0,5,100)}
+    regressor_ridge = sklin.Ridge(fit_intercept=False, normalize=False)
+    param_grid = {'alpha' : np.linspace(0,5,10)}
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain,Ytrain)
@@ -107,20 +112,26 @@ def ridge_regression(Xtrain,Ytrain,Xval):
 
 def main():
     X = read_path('project_data/train.csv')
-    Y = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
+    Yo = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
+#   Y = (Y - np.mean(Y))/np.std(Y)
+    Y = np.log(Yo)
     Xval = read_path('project_data/validate.csv')
     print X
 
     # always split training and test data!
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
 
-    linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest,Xval)
+    lin = linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest)
+    print 'lin score on Xtrain,Ytrain: ', logscore(Ytrain,lin.predict(Xtrain))
+    print 'lin score on Xtest,Ytest: ', logscore(Ytest,lin.predict(Xtest))
 
-    ridge = ridge_regression(Xtrain,Ytrain,Xtest)
-    print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
-    print 'score of ridge (test): ', logscore(Ytest, ridge.predict(Xtest))
+    #ridge = ridge_regression(Xtrain,Ytrain,Xtest)
+    #print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
+    #print 'score of ridge (test): ', logscore(Ytest, ridge.predict(Xtest))
 
-    Ypred = ridge.predict(Xval)
+    Ypred = lin.predict(Xval)
+    Ypred = np.exp(Ypred)
+    print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
 
 if __name__ == "__main__":
