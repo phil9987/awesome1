@@ -1,4 +1,7 @@
 function [ vals, M, E ] = plot_mean_var( T, Y, p )
+    m = mean(T);
+    s = std(T);
+    T = (T-m)./s;
     vals = unique(T);
     size(vals)
     M = zeros(size(vals));
@@ -10,8 +13,8 @@ function [ vals, M, E ] = plot_mean_var( T, Y, p )
     end
     errorbar(vals,M,E, 'b-');
     hold on;
-    P = polyfit(vals,M,p)
-    plot(vals,polyval(P,vals));
+    P = polyfit(vals,M,p);
+    plot(vals,polyval(P,vals), 'r-');
     hold off;
 end
 
