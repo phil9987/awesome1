@@ -51,6 +51,10 @@ def read_path(inpath):
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
             (isoy, isow, isowd) = t.isocalendar()
 #           x.append(t.year-2014)
+            #x.append((float(t.month)))
+            #x.append((float(isow)))
+            #x.append((float(t.hour)))
+            #x.append((float(row[1])))
             x.append((float(t.month)-6.5)/3.43)
             x.append((float(isow)-26.74)/15)
             x.append((float(t.hour)-11.6)/6.93)
@@ -87,10 +91,10 @@ def linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest,Xval):
     return regressor.predict(Xval)
 
 def ridge_regression(Xtrain,Ytrain,Xval):
-    regressor_ridge = sklin.Ridge(fit_intercept=False)
-    param_grid = {'alpha' : np.linspace(0,5,10)}
+    regressor_ridge = sklin.Ridge(fit_intercept=False, normalize=True)
+    param_grid = {'alpha' : np.linspace(0,5,100)}
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 1000)
+    grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 100)
     grid_search.fit(Xtrain,Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     Ypred = grid_search.best_estimator_.predict(Xval)
