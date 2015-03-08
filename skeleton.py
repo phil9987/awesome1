@@ -91,6 +91,7 @@ def read_path(inpath,basefun):
                 x.append(float(isow-3.98)/2)
                 x.append(float(t.hour-11.6)/6.93)
                 x.append((float(row[1])-0.5)/0.234)
+                x.append((float(row[2])-0.5)/0.234)
                 x.append((float(row[3])-0.477)/0.207)
             elif basefun == 'poly':
                 x.extend(get_features_poly(float(isow-3.98)/2, 6))
