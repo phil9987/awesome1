@@ -53,7 +53,7 @@ def get_features_exp(x):
     y = [x, np.exp(x)]
     return y
 
-def read_path(inpath):
+def read_path(inpath,basefun):
     X = []
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
@@ -81,11 +81,24 @@ def read_path(inpath):
             #x.extend(get_features_poly((float(row[1])),3))
             #x.extend(get_features_poly((float(row[3])),3))
 #           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
-            x.extend(get_features_poly(float(isow-3.98)/2, 6))
-            x.extend(get_features_poly(float(t.hour-11.6)/6.93, 16))
-            x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
-            x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
+            if basefun == 'none' :
+                x.append(float(isow))
+                x.append(float(t.hour))
+                x.append(row[1])
+                x.append(row[2])
+                x.append(row[3])
+            elif basefun == 'normalized':
+                x.append(float(isow-3.98)/2)
+                x.append(float(t.hour-11.6)/6.93)
+                x.append((float(row[1])-0.5)/0.234)
+                x.append((float(row[3])-0.477)/0.207)
+            elif basefun == 'poly':
+                x.extend(get_features_poly(float(isow-3.98)/2, 6))
+                x.extend(get_features_poly(float(t.hour-11.6)/6.93, 16))
+                x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
+                x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
             X.append(x)
+
     return np.matrix(X)
 
 
@@ -115,11 +128,11 @@ def ridge_regression(Xtrain,Ytrain,Xval):
     return grid_search.best_estimator_
 
 def main():
-    X = read_path('project_data/train.csv')
+    X = read_path('project_data/train.csv', 'poly')
     Yo = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
 #   Y = (Y - np.mean(Y))/np.std(Y)
     Y = np.log(Yo)
-    Xval = read_path('project_data/validate.csv')
+    Xval = read_path('project_data/validate.csv', 'poly')
     print X
 
     # always split training and test data!
