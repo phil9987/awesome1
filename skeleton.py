@@ -13,7 +13,7 @@ from numpy.polynomial.polynomial import Polynomial, polyval
 # TODO: Revert the scoring, so that it corresponds to a least square
 def logscore(gtruth,gpred):
     gpred = np.clip(gpred,0,np.inf)
-    logdif = np.log(1 + np.exp(gtruth)) - np.log(1 + np.exp(gpred))
+    logdif = np.log(1 + np.exp(gtruth)-1) - np.log(1 + np.exp(gpred)-1)
 #   logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
@@ -40,8 +40,8 @@ def eval_custom(x):
         y.append(np.power(x[3],i+4))
     return y
 
-def get_features(x):
-    return eval_custom(np.array(x))
+def get_features_poly3d(x):
+    return eval_poly3d(np.array(x))
 
 def get_features_poly(x,d):
     y = []
@@ -53,8 +53,17 @@ def get_features_exp(x):
     y = [x, np.exp(x)]
     return y
 
+def get_features_fourier(x, d, r):
+    y = []
+    w = (np.pi*2)/r
+    for i in range(d):
+        y.append(np.sin((i+1)*x*w))
+        y.append(np.cos((i+1)*x*w))
+    return y
+
 def read_path(inpath,basefun):
     X = []
+    epoch = datetime.datetime.utcfromtimestamp(0)
     with open(inpath,'r') as fin:
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
@@ -72,7 +81,6 @@ def read_path(inpath,basefun):
 #           x.append((float(row[4])-18.04)/2.87)
 #           x.append((float(row[5])-0.20)/0.14)
 #           x.append((float(row[6])-0.623)/0.233)
-#           x.extend(get_features_poly((float(t.month)-6.5)/3.43, 3))
 #           x.extend(get_features_poly((float(t.hour)-11.6)/6.93, 15))
 #           x.extend(get_features_poly((float(row[1])-0.5)/0.234, 9))
 #           x.extend(get_features_poly((float(row[3])-0.477)/0.207, 5))
@@ -115,7 +123,7 @@ def linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest):
 
 def ridge_regression(Xtrain,Ytrain,Xval):
     regressor_ridge = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : np.linspace(0,5,10)}
+    param_grid = {'alpha' : np.linspace(0,1,100)}
     n_scorefun = skmet.make_scorer(lambda x, y: -logscore(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(regressor_ridge, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain,Ytrain)
@@ -145,9 +153,9 @@ def main():
     print 'lin score on Xtrain,Ytrain: ', logscore(Ytrain,Ypredtrain)
     print 'lin score on Xtest,Ytest: ', logscore(Ytest,Ypredtest)
 
-    #ridge = ridge_regression(Xtrain,Ytrain,Xtest)
-    #print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
-    #print 'score of ridge (test): ', logscore(Ytest, ridge.predict(Xtest))
+#   ridge = ridge_regression(Xtrain,Ytrain,Xtest)
+#   print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
+#   print 'score of ridge (test): ', logscore(Ytest, ridge.predict(Xtest))
 
     Ypred = lin.predict(Xval)
     Ypred = np.exp(Ypred)
