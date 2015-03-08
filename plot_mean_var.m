@@ -1,7 +1,7 @@
 function [ vals, M, E ] = plot_mean_var( T, Y, p )
     m = mean(T);
     s = std(T);
-    T = (T-m)./s;
+    %T = (T-m)./s;
     vals = unique(T);
     size(vals);
     M = zeros(size(vals));

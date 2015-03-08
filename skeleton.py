@@ -17,6 +17,29 @@ def logscore(gtruth,gpred):
 #   logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
+
+def monomials(x, d):
+    y = []
+    if len(x) == 0:
+        return []
+    if d == 0:
+        return [1]
+    elif d == 1:
+        return x
+    else:
+        for i in range(d+1):
+            for m in monomials(x[1:], d-i):
+                y.append(x[0]**i*m)
+        return y
+
+
+def get_features_poly_nd(x, d):
+    y = []
+    for i in range(d+1):
+        y.extend(monomials(x,d))
+    return y
+
+
 def eval_poly3d(x):
     y = [1]
     y.extend(x)
@@ -28,17 +51,6 @@ def eval_poly3d(x):
     y.extend(x[:-2]*x[1:-1]*x[2:]) # x1*x2*x3,...,x(n-2)*x(n-2)*x(n-3)
     return y
 
-def eval_custom(x):
-    y = eval_poly3d(x)
-    for i in range(3):
-         y.append(np.power(x[0],i+4))
-    for i in range(3):
-         y.append(np.power(x[1],i+4))
-    for i in range(13):
-        y.append(np.power(x[2],i+4))
-    for i in range(6):
-        y.append(np.power(x[3],i+4))
-    return y
 
 def get_features_poly3d(x):
     return eval_poly3d(np.array(x))
@@ -61,7 +73,22 @@ def get_features_fourier(x, d, r):
         y.append(np.cos((i+1)*x*w))
     return y
 
-def read_path(inpath,basefun):
+def get_features_fourier_md(x, d, r): # TODO
+    y = []
+    for i in range(d):
+        s = 0
+        c = 0
+        for j in range(len(x)):
+            w = (np.pi*2)/r[j]
+            s += np.sin((i+1)*x[j]*w)
+            c += np.cos((i+1)*x[j]*w)
+        y.append(s)
+        y.append(c)
+    return y
+
+
+# TODO: Read in std, mean with python code (not hardcoded)
+def read_path(inpath, basefun):
     X = []
     epoch = datetime.datetime.utcfromtimestamp(0)
     with open(inpath,'r') as fin:
@@ -69,18 +96,12 @@ def read_path(inpath,basefun):
         for row in reader:
             x = [1] # just an offset
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            (isoy, isow, isowd) = t.isocalendar()
-#            x.append((float(t.month)-6.5)/3.43)
-#           x.append((float(isow)-26.74)/15)
-#           x.append((float(t.hour)-11.6)/6.93)
-#           x.append((float(row[1])-0.5)/0.234)
-#           x.append((float(isowd)-3.98)/2)
-#           x.append((float(t.day)-15.6)/8.76)
-#           x.append((float(row[2])-2.09)/0.765)
-#           x.append((float(row[3])-0.477)/0.207)
-#           x.append((float(row[4])-18.04)/2.87)
-#           x.append((float(row[5])-0.20)/0.14)
-#           x.append((float(row[6])-0.623)/0.233)
+            d = ((t - epoch).days - 16078)
+#           x.extend(get_features_fourier(d, 8, 365))
+#           x.extend(get_features_fourier(d, 8, 30))
+#           x.extend(get_features_fourier(d, 8, 1.0))
+#           x.extend(get_features_fourier(d, 8, 1.0/24))
+
 #           x.extend(get_features_poly((float(t.hour)-11.6)/6.93, 15))
 #           x.extend(get_features_poly((float(row[1])-0.5)/0.234, 9))
 #           x.extend(get_features_poly((float(row[3])-0.477)/0.207, 5))
@@ -90,19 +111,19 @@ def read_path(inpath,basefun):
             #x.extend(get_features_poly((float(row[3])),3))
 #           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
             if basefun == 'none' :
-                x.append(float(isow))
+                x.append(float(t.isoweekday()))
                 x.append(float(t.hour))
                 x.append(row[1])
                 x.append(row[2])
                 x.append(row[3])
             elif basefun == 'normalized':
-                x.append(float(isow-3.98)/2)
+                x.append(float(t.isoweekday()-3.98)/2)
                 x.append(float(t.hour-11.6)/6.93)
                 x.append((float(row[1])-0.5)/0.234)
                 x.append((float(row[2])-0.5)/0.234)
                 x.append((float(row[3])-0.477)/0.207)
             elif basefun == 'poly':
-                x.extend(get_features_poly(float(isow-3.98)/2, 6))
+                x.extend(get_features_poly(float(t.isoweekday()-3.98)/2, 6))
                 x.extend(get_features_poly(float(t.hour-11.6)/6.93, 16))
                 x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
                 x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
