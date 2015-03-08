@@ -76,11 +76,15 @@ def read_path(inpath):
 #           x.extend(get_features_poly((float(t.hour)-11.6)/6.93, 15))
 #           x.extend(get_features_poly((float(row[1])-0.5)/0.234, 9))
 #           x.extend(get_features_poly((float(row[3])-0.477)/0.207, 5))
+            #x.extend(get_features_poly(float(isow),6))
+            #x.extend(get_features_poly(float(t.hour),16))
+            #x.extend(get_features_poly((float(row[1])),3))
+            #x.extend(get_features_poly((float(row[3])),3))
+#           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
             x.extend(get_features_poly(float(isow-3.98)/2, 6))
-            x.extend(get_features_poly(float(t.hour-11.6)/6.93, 15))
+            x.extend(get_features_poly(float(t.hour-11.6)/6.93, 16))
             x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
             x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
-#           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
             X.append(x)
     return np.matrix(X)
 
@@ -122,8 +126,10 @@ def main():
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
 
     lin = linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest)
-    print 'lin score on Xtrain,Ytrain: ', logscore(Ytrain,lin.predict(Xtrain))
-    print 'lin score on Xtest,Ytest: ', logscore(Ytest,lin.predict(Xtest))
+    Ypredtrain = lin.predict(Xtrain)
+    Ypredtest = lin.predict(Xtest)
+    print 'lin score on Xtrain,Ytrain: ', logscore(Ytrain,Ypredtrain)
+    print 'lin score on Xtest,Ytest: ', logscore(Ytest,Ypredtest)
 
     #ridge = ridge_regression(Xtrain,Ytrain,Xtest)
     #print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
@@ -133,6 +139,20 @@ def main():
     Ypred = np.exp(Ypred)
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
+    plt.figure(1)
+    plt.subplot(211)
+    inputdata1, = plt.plot(Xtrain[:,1], Ytrain, 'bo', label='Ytrain')             #input data
+    predictdata1, = plt.plot(Xtrain[:,1],Ypredtrain,'ro',label='prediction Ytrain')
+    plt.legend(handles=[inputdata1,predictdata1])
+    plt.title('Train-data')
+    plt.subplot(212)
+    inputdata2, =plt.plot(Xtest[:,1],Ytest,'bo', label='Ytest')
+    predictdata2, = plt.plot(Xtest[:,1], Ypredtest,'ro', label='prediction Ytest')
+    plt.legend(handles=[inputdata2,predictdata2])
+    plt.title('Test-data')
+
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
