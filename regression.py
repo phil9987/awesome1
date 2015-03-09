@@ -105,12 +105,12 @@ def read_features(X, features_fn):
 
 def time_fourier(x):
     y = [1]
-    y.append(float(x[0].year))
+    y.extend(poly(float(x[0].year), 1))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
     y.extend(fourier(float(x[0].hour),         8, 24))
 #   y.extend(indicators(range(24), x[0].hour))
-    y.extend(fourier(float(x[0].minute),       8, 60))
+#   y.extend(fourier(float(x[0].minute),       8, 60))
     return y
 
 
@@ -140,7 +140,7 @@ def month_w13_correlations(x):
     L1 = 12
     L2 = 1.378
     L3 = 1.266
-    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 3))
+    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 4))
 #   for i in range(3):
 #       for j in range(3):
 #           for k in range(3):
@@ -194,13 +194,13 @@ def regress(feature_fn):
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=0.8)
 
     lin = linear_regression(Xtrain, Ytrain)
     print 'regressor.coef_: ', lin.coef_
     print 'regressor.intercept_: ', lin.intercept_
     scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(lin, X, Y, scoring=scorefunction, cv = 10)
+    scores = skcv.cross_val_score(lin, X, Y, scoring = scorefunction, cv = 10)
     print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
     Ypredtrain = lin.predict(Xtrain)
     Ypredtest = lin.predict(Xtest)
