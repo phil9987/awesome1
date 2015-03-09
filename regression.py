@@ -132,13 +132,17 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
     return y
 
 
-def month_w13_poly(x):
+def month_w1356_poly(x):
     y = []
     m = float(x[0].month) + float(x[0].day)/30
     w1 = float(x[1])
     w3 = float(x[3])
-    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 4))
+    w5 = float(x[5])
+    w6 = float(x[6])
+    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207,
+                      (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 4))
     return y
+
 
 def w56_poly(x):
     w5 = float(x[5])
@@ -190,7 +194,7 @@ def regress(feature_fn):
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=0.8)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.8)
 
     lin = linear_regression(Xtrain, Ytrain)
     print 'regressor.coef_: ', lin.coef_
@@ -214,4 +218,4 @@ def regress(feature_fn):
     return Ypred
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, month_w13_poly, w56_poly], x))
+    regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
