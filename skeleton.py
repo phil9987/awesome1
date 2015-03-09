@@ -36,7 +36,7 @@ def monomials(x, d):
 def get_features_poly_nd(x, d):
     y = []
     for i in range(d+1):
-        y.extend(monomials(x,d))
+        y.extend(monomials(x, d))
     return y
 
 
@@ -96,20 +96,6 @@ def read_path(inpath, basefun):
         for row in reader:
             x = [1] # just an offset
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            d = ((t - epoch).days - 16078)
-#           x.extend(get_features_fourier(d, 8, 365))
-#           x.extend(get_features_fourier(d, 8, 30))
-#           x.extend(get_features_fourier(d, 8, 1.0))
-#           x.extend(get_features_fourier(d, 8, 1.0/24))
-
-#           x.extend(get_features_poly((float(t.hour)-11.6)/6.93, 15))
-#           x.extend(get_features_poly((float(row[1])-0.5)/0.234, 9))
-#           x.extend(get_features_poly((float(row[3])-0.477)/0.207, 5))
-            #x.extend(get_features_poly(float(isow),6))
-            #x.extend(get_features_poly(float(t.hour),16))
-            #x.extend(get_features_poly((float(row[1])),3))
-            #x.extend(get_features_poly((float(row[3])),3))
-#           x.extend(get_features_exp((float(row[6])-0.623)/0.233))
             if basefun == 'none' :
                 x.append(float(t.isoweekday()))
                 x.append(float(t.hour))
@@ -125,8 +111,19 @@ def read_path(inpath, basefun):
             elif basefun == 'poly':
                 x.extend(get_features_poly(float(t.isoweekday()-3.98)/2, 6))
                 x.extend(get_features_poly(float(t.hour-11.6)/6.93, 16))
-                x.extend(get_features_poly((float(row[1])-0.5)/0.234, 3))
-                x.extend(get_features_poly((float(row[3])-0.477)/0.207, 3))
+                x.extend(get_features_poly_nd(
+                    [(float(t.month)-6)/12,
+                     (float(row[1])-0.5)/0.234,
+                     (float(row[3])-0.477)/0.207], 6))
+            elif basefun == 'fourier':
+                x.extend(get_features_fourier(float(t.isoweekday()), 8, 7))
+                x.extend(get_features_fourier(float(t.month), 4, 12))
+                x.extend(get_features_fourier(float(t.hour), 4, 24))
+                x.extend(get_features_fourier(float(t.minute), 2, 60))
+                x.extend(get_features_poly_nd(
+                    [(float(t.month)-6)/12,
+                     (float(row[1])-0.5)/0.234,
+                     (float(row[3])-0.477)/0.207], 3))
             X.append(x)
 
     return np.matrix(X)
@@ -158,11 +155,11 @@ def ridge_regression(Xtrain,Ytrain,Xval):
     return grid_search.best_estimator_
 
 def main():
-    X = read_path('project_data/train.csv', 'poly')
-    Yo = np.genfromtxt('project_data/train_y.csv',delimiter = ',')
+    X = read_path('project_data/train.csv', 'fourier')
+    Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
 #   Y = (Y - np.mean(Y))/np.std(Y)
     Y = np.log(Yo)
-    Xval = read_path('project_data/validate.csv', 'poly')
+    Xval = read_path('project_data/validate.csv', 'fourier')
     print X
 
     # always split training and test data!
