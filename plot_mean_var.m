@@ -18,7 +18,7 @@ function [ vals, M, E, P, f ] = plot_mean_var( T, Y, p )
     f = fit(vals,M,'fourier4');
     w = f.w
     2*pi/w
-    plot(vals,f(vals),'g-');
+    %plot(vals,f(vals),'g-');
     hold off;
 end
 
