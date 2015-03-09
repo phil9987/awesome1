@@ -1,4 +1,4 @@
-function [ vals, M, E ] = plot_mean_var( T, Y, p )
+function [ vals, M, E, P, f ] = plot_mean_var( T, Y, p )
     m = mean(T);
     s = std(T);
     %T = (T-m)./s;
@@ -15,7 +15,7 @@ function [ vals, M, E ] = plot_mean_var( T, Y, p )
     hold on;
     P = polyfit(vals,M,p);
     plot(vals,polyval(P,vals), 'r-');
-    f = fit(vals,M,'fourier8');
+    f = fit(vals,M,'fourier4');
     w = f.w
     2*pi/w
     plot(vals,f(vals),'g-');

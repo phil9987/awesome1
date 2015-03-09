@@ -108,12 +108,24 @@ def time_fourier(x):
     y.append(float(x[0].year))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
-#   y.extend(fourier(float(x[0].hour),         8, 24))
-    y.extend(indicators(range(24), x[0].hour))
-    y.extend(indicators(range(60), x[0].minute))
+    y.extend(fourier(float(x[0].hour),         8, 24))
+#   y.extend(indicators(range(24), x[0].hour))
+    y.extend(fourier(float(x[0].minute),       8, 60))
     return y
 
-#def
+
+def w2_ind(x):
+    return indicators(range(3), x[2])
+
+def w4_fourier(x):
+    return fourier(float(x[4]), 8, 11)
+
+
+def ortho(fns, x):
+    y = []
+    for fn in fns:
+        y.extend(fn(x))
+    return y
 
 
 def linear_regression(Xtrain, Ytrain):
@@ -165,4 +177,4 @@ def regress(feature_fn):
     return Ypred
 
 if __name__ == "__main__":
-    regress(lambda x: time_fourier(x))
+    regress(lambda x: ortho([time_fourier, w2_ind, w4_fourier], x))
