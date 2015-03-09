@@ -132,22 +132,18 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
     return y
 
 
-def month_w13_correlations(x):
+def month_w13_poly(x):
     y = []
     m = float(x[0].month) + float(x[0].day)/30
     w1 = float(x[1])
     w3 = float(x[3])
-    L1 = 12
-    L2 = 1.378
-    L3 = 1.266
     y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 4))
-#   for i in range(3):
-#       for j in range(3):
-#           for k in range(3):
-#               y.append(np.cos(np.pi/L1*(i+1+0.5)*float(m))*
-#                        np.cos(np.pi/L2*(j+1+0.5)*float(w1))*
-#                        np.cos(np.pi/L3*(k+1+0.5)*float(w3)))
     return y
+
+def w56_poly(x):
+    w5 = float(x[5])
+    w6 = float(x[6])
+    return poly_nd([(w5-0.1966)/0.1399, (w6-0.6291)/0.233], 4)
 
 
 def w2_ind(x):
@@ -218,4 +214,4 @@ def regress(feature_fn):
     return Ypred
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, month_w13_correlations], x))
+    regress(lambda x: ortho([time_fourier, month_w13_poly, w56_poly], x))
