@@ -114,6 +114,42 @@ def time_fourier(x):
     return y
 
 
+def time_dct(x): # Discrete cosine transform over multiple dimensions
+    y = []
+    t = x[0]
+    L1 = 7
+    L2 = 12
+    L3 = 24
+    L4 = 60
+    for i in range(4):
+        for j in range(4):
+            for k in range(8):
+                for m in range(8):
+                    y.append(np.cos(np.pi/L1*(i+0.5)*float(t.isoweekday()))*
+                             np.cos(np.pi/L2*(j+0.5)*float(t.month))*
+                             np.cos(np.pi/L3*(k+0.5)*float(t.hour))*
+                             np.cos(np.pi/L4*(m+0.5)*float(t.minute)))
+    return y
+
+
+def month_w13_correlations(x):
+    y = []
+    m = float(x[0].month) + float(x[0].day)/30
+    w1 = float(x[1])
+    w3 = float(x[3])
+    L1 = 12
+    L2 = 1.378
+    L3 = 1.266
+    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 3))
+#   for i in range(3):
+#       for j in range(3):
+#           for k in range(3):
+#               y.append(np.cos(np.pi/L1*(i+1+0.5)*float(m))*
+#                        np.cos(np.pi/L2*(j+1+0.5)*float(w1))*
+#                        np.cos(np.pi/L3*(k+1+0.5)*float(w3)))
+    return y
+
+
 def w2_ind(x):
     return indicators(range(3), x[2])
 
@@ -171,9 +207,9 @@ def regress(feature_fn):
     print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
     print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
 
-    ridge = ridge_regression(Xtrain, Ytrain)
-    print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
-    print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
+#   ridge = ridge_regression(Xtrain, Ytrain)
+#   print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
+#   print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
 
     Ypred = lin.predict(Xval)
     Ypred = np.exp(Ypred) - 1
@@ -182,4 +218,4 @@ def regress(feature_fn):
     return Ypred
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, w2_ind, w4_linear], x))
+    regress(lambda x: ortho([time_fourier, month_w13_correlations], x))
