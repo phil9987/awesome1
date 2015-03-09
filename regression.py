@@ -117,6 +117,11 @@ def time_fourier(x):
 def w2_ind(x):
     return indicators(range(3), x[2])
 
+
+def w4_linear(x):
+    return [float(x[4])]
+
+
 def w4_fourier(x):
     return fourier(float(x[4]), 8, 11)
 
@@ -136,7 +141,7 @@ def linear_regression(Xtrain, Ytrain):
 
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : np.linspace(0, 1, 100)}
+    param_grid = {'alpha' : np.linspace(0, 5, 10)}
     n_scorefun = skmet.make_scorer(lambda x, y: -score(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain, Ytrain)
@@ -166,9 +171,9 @@ def regress(feature_fn):
     print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
     print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
 
-    #   ridge = ridge_regression(Xtrain,Ytrain,Xtest)
-    #   print 'score of ridge (train): ', logscore(Ytrain, ridge.predict(Xtrain))
-    #   print 'score of ridge (test): ', logscore(Ytest, ridge.predict(Xtest))
+    ridge = ridge_regression(Xtrain, Ytrain)
+    print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
+    print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
 
     Ypred = lin.predict(Xval)
     Ypred = np.exp(Ypred) - 1
@@ -177,4 +182,4 @@ def regress(feature_fn):
     return Ypred
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, w2_ind, w4_fourier], x))
+    regress(lambda x: ortho([time_fourier, w2_ind, w4_linear], x))
