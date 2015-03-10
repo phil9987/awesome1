@@ -12,7 +12,7 @@ from numpy.polynomial.polynomial import Polynomial, polyval
 
 
 def logscore(gtruth,gpred):
-    gpred = np.clip(gpred,0,np.inf)
+    gpred = np.clip(gpred, 0, np.inf)
     logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
@@ -73,6 +73,7 @@ def fourier_md(x, d, r): # TODO
         y.append(c)
     return y
 
+
 def indicators(vals, x):
     y = []
     for val in vals:
@@ -105,12 +106,13 @@ def read_features(X, features_fn):
 
 def time_fourier(x):
     y = [1]
-    y.append(float(x[0].year))
+    y.extend(poly(float(x[0].year), 2))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
+    y.extend(fourier(float(x[0].day),          4, 30))
     y.extend(fourier(float(x[0].hour),         8, 24))
 #   y.extend(indicators(range(24), x[0].hour))
-    y.extend(fourier(float(x[0].minute),       8, 60))
+#   y.extend(fourier(float(x[0].minute),       8, 60))
     return y
 
 
@@ -132,22 +134,24 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
     return y
 
 
-def month_w13_correlations(x):
+def month_w1356_poly(x):
     y = []
     m = float(x[0].month) + float(x[0].day)/30
     w1 = float(x[1])
     w3 = float(x[3])
-    L1 = 12
-    L2 = 1.378
-    L3 = 1.266
-    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207], 3))
-#   for i in range(3):
-#       for j in range(3):
-#           for k in range(3):
-#               y.append(np.cos(np.pi/L1*(i+1+0.5)*float(m))*
-#                        np.cos(np.pi/L2*(j+1+0.5)*float(w1))*
-#                        np.cos(np.pi/L3*(k+1+0.5)*float(w3)))
+    w5 = float(x[5])
+    w6 = float(x[6])
+    y.extend(poly_nd([m,w1,w3,w5,w6], 2))
+#   y.extend(poly_nd([(m-7.007)/3.451,
+#                     (w1-0.5)/0.2341, (w3-0.4773)/0.207,
+#                     (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
     return y
+
+
+def w56_poly(x):
+    w5 = float(x[5])
+    w6 = float(x[6])
+    return poly_nd([(w5-0.1966)/0.1399, (w6-0.6291)/0.233], 4)
 
 
 def w2_ind(x):
@@ -159,7 +163,7 @@ def w4_linear(x):
 
 
 def w4_fourier(x):
-    return fourier(float(x[4]), 8, 11)
+    return fourier(float(x[4]), 8, 1)
 
 
 def ortho(fns, x):
@@ -188,34 +192,49 @@ def ridge_regression(Xtrain,Ytrain):
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
     Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
-    X = read_features(Xo, feature_fn)
     Y = np.log(1 + Yo)
     Xvalo = read_path('project_data/validate.csv')
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
+    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.8)
+
+    X = read_features(Xo, feature_fn)
+    Xtrain = read_features(Xtraino, feature_fn)
+    Xtest = read_features(Xtesto, feature_fn)
 
     lin = linear_regression(Xtrain, Ytrain)
     print 'regressor.coef_: ', lin.coef_
     print 'regressor.intercept_: ', lin.intercept_
     scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(lin, X, Y, scoring=scorefunction, cv = 10)
+    scores = skcv.cross_val_score(lin, X, Y, scoring = scorefunction, cv = 10)
     print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
     Ypredtrain = lin.predict(Xtrain)
     Ypredtest = lin.predict(Xtest)
     print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
     print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
+    plot(np.matrix(Xtesto), Ypredtest, Ytest)
 
 #   ridge = ridge_regression(Xtrain, Ytrain)
 #   print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
 #   print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
 
+    Ypred = lin.predict(X)
+    Ypred = np.exp(Ypred) - 1
+    np.savetxt('project_data/train_ypred.txt', Ypred)
     Ypred = lin.predict(Xval)
     Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
     return Ypred
 
+
+def plot(Xo, Ypred, Ytruth):
+    plt.figure(1)
+    input, = plt.plot(Xo[:, 5], Ypred, 'bo', label='Ypred')
+    predict, = plt.plot(Xo[:, 5], Ytruth, 'ro', label='Ytruth')
+    plt.legend(handles=[input, predict])
+    plt.savefig("plot.png")
+
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, month_w13_correlations], x))
+    regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
