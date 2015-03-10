@@ -12,7 +12,7 @@ from numpy.polynomial.polynomial import Polynomial, polyval
 
 
 def logscore(gtruth,gpred):
-    gpred = np.clip(gpred,0,np.inf)
+    gpred = np.clip(gpred, 0, np.inf)
     logdif = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdif)))
 
@@ -106,9 +106,10 @@ def read_features(X, features_fn):
 
 def time_fourier(x):
     y = [1]
-    y.extend(poly(float(x[0].year), 1))
+    y.extend(poly(float(x[0].year), 2))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
+    y.extend(fourier(float(x[0].day),          4, 30))
     y.extend(fourier(float(x[0].hour),         8, 24))
 #   y.extend(indicators(range(24), x[0].hour))
 #   y.extend(fourier(float(x[0].minute),       8, 60))
@@ -140,8 +141,10 @@ def month_w1356_poly(x):
     w3 = float(x[3])
     w5 = float(x[5])
     w6 = float(x[6])
-    y.extend(poly_nd([(m-7.007)/3.451, (w1-0.5)/0.2341, (w3-0.4773)/0.207,
-                      (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
+    y.extend(poly_nd([m,w1,w3,w5,w6], 2))
+#   y.extend(poly_nd([(m-7.007)/3.451,
+#                     (w1-0.5)/0.2341, (w3-0.4773)/0.207,
+#                     (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
     return y
 
 
@@ -160,7 +163,7 @@ def w4_linear(x):
 
 
 def w4_fourier(x):
-    return fourier(float(x[4]), 8, 11)
+    return fourier(float(x[4]), 8, 1)
 
 
 def ortho(fns, x):
@@ -216,8 +219,11 @@ def regress(feature_fn):
 #   print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
 #   print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
 
-    Ypred = lin.predict(Xval)
+    Ypred = lin.predict(X)
     Ypred = np.exp(Ypred) - 1
+    np.savetxt('project_data/train_ypred.txt', Ypred)
+    Ypred = lin.predict(Xval)
+    Ypred = np.exp(Ypred+0.5) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
     return Ypred
