@@ -141,7 +141,7 @@ def month_w1356_poly(x):
     w3 = float(x[3])
     w5 = float(x[5])
     w6 = float(x[6])
-    y.extend(poly_nd([m, w1, w3, w5, w6], 3))
+#   y.extend(poly_nd([m, w1, w3, w5, w6], 3))
 #   y.extend(poly_nd([(m-7.007)/3.451,
 #                     (w1-0.5)/0.2341, (w3-0.4773)/0.207,
 #                     (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
@@ -262,4 +262,4 @@ def plot_mean_var(X, Yp, Yt):
 
 
 if __name__ == "__main__":
-    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly], x)))
+    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly, w4_linear], x)))
