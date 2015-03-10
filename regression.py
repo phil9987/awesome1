@@ -223,7 +223,7 @@ def regress(feature_fn):
     Ypred = np.exp(Ypred) - 1
     np.savetxt('project_data/train_ypred.txt', Ypred)
     Ypred = lin.predict(Xval)
-    Ypred = np.exp(Ypred+0.5) - 1
+    Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
     return Ypred
