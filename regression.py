@@ -6,15 +6,15 @@ import sklearn.linear_model as sklin
 import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
-from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
 
 from numpy.polynomial.polynomial import Polynomial, polyval
 
 
 def logscore(gtruth,gpred):
     gpred = np.clip(gpred, 0, np.inf)
-    logdif = np.log(1 + gtruth) - np.log(1 + gpred)
-    return np.sqrt(np.mean(np.square(logdif)))
+    logdiff = np.log(1 + gtruth) - np.log(1 + gpred)
+    return np.sqrt(np.mean(np.square(logdiff)))
 
 
 def score(gtruth, gpred):
@@ -110,7 +110,7 @@ def time_fourier(x):
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
     y.extend(fourier(float(x[0].day),          4, 30))
-    y.extend(fourier(float(x[0].hour),         8, 24))
+    y.extend(fourier(float(x[0].hour),         4, 24))
 #   y.extend(indicators(range(24), x[0].hour))
 #   y.extend(fourier(float(x[0].minute),       8, 60))
     return y
@@ -141,17 +141,15 @@ def month_w1356_poly(x):
     w3 = float(x[3])
     w5 = float(x[5])
     w6 = float(x[6])
-    y.extend(poly_nd([m,w1,w3,w5,w6], 2))
+    y.extend(poly_nd([m, w1, w3, w5, w6], 3))
 #   y.extend(poly_nd([(m-7.007)/3.451,
 #                     (w1-0.5)/0.2341, (w3-0.4773)/0.207,
 #                     (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
     return y
 
 
-def w56_poly(x):
-    w5 = float(x[5])
-    w6 = float(x[6])
-    return poly_nd([(w5-0.1966)/0.1399, (w6-0.6291)/0.233], 4)
+def w_poly(n_w, d):
+    return lambda x: poly(float(x[n_w]), d)
 
 
 def w2_ind(x):
@@ -179,9 +177,15 @@ def linear_regression(Xtrain, Ytrain):
     return regressor
 
 
+def random_forest_regression(Xtrain, Ytrain):
+    regressor = RandomForestRegressor()
+    regressor.fit(Xtrain, Ytrain)
+    return regressor
+
+
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : np.linspace(0, 5, 10)}
+    param_grid = {'alpha' : np.linspace(0, 5, 2)}
     n_scorefun = skmet.make_scorer(lambda x, y: -score(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain, Ytrain)
@@ -197,7 +201,7 @@ def regress(feature_fn):
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.8)
+    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.9)
 
     X = read_features(Xo, feature_fn)
     Xtrain = read_features(Xtraino, feature_fn)
@@ -213,16 +217,18 @@ def regress(feature_fn):
     Ypredtest = lin.predict(Xtest)
     print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
     print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
-    plot(np.matrix(Xtesto), Ypredtest, Ytest)
+    Xplot = np.matrix(Xtesto)
+#   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
+#   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
-#   ridge = ridge_regression(Xtrain, Ytrain)
-#   print 'score of ridge (train): ', score(Ytrain, ridge.predict(Xtrain))
-#   print 'score of ridge (test): ', score(Ytest, ridge.predict(Xtest))
+    forest = random_forest_regression(Xtrain, Ytrain)
+    print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
+    print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
 
-    Ypred = lin.predict(X)
-    Ypred = np.exp(Ypred) - 1
-    np.savetxt('project_data/train_ypred.txt', Ypred)
-    Ypred = lin.predict(Xval)
+#   Ypred = lin.predict(X)
+#   Ypred = np.exp(Ypred) - 1
+#   np.savetxt('project_data/train_ypred.txt', Ypred)
+    Ypred = forest.predict(Xval)
     Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
@@ -231,10 +237,29 @@ def regress(feature_fn):
 
 def plot(Xo, Ypred, Ytruth):
     plt.figure(1)
-    input, = plt.plot(Xo[:, 5], Ypred, 'bo', label='Ypred')
-    predict, = plt.plot(Xo[:, 5], Ytruth, 'ro', label='Ytruth')
+    input, = plt.plot(Xo, np.exp(Ypred)-1, 'bo', label='Ypred')
+    predict, = plt.plot(Xo, np.exp(Ytruth)-1, 'ro', label='Ytruth')
     plt.legend(handles=[input, predict])
     plt.savefig("plot.png")
 
+
+def plot_mean_var(X, Yp, Yt):
+    print np.shape(X)
+    vals = np.unique(np.array(X))
+    Mp = np.zeros(np.shape(vals))
+    Mt = np.zeros(np.shape(vals))
+#   E = np.zeros(np.shape(X))
+    for i in range(np.shape(vals)[0]):
+        v = vals[i]
+        Mp[i] = np.mean([y for x, y in zip(X, Yp) if x == v])
+        Mt[i] = np.mean([y for x, y in zip(X, Yt) if x == v])
+#       E[i] = np.std(np.select(Y, X == v))
+    plt.figure(2)
+    pred, = plt.plot(vals, Mp, 'b-', label="Ypred")
+    truth, = plt.plot(vals, Mt, 'r-', label="Ytruth")
+    plt.legend(handles=[pred, truth])
+    plt.savefig("mean_var.png")
+
+
 if __name__ == "__main__":
-    regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
+    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly], x)))
