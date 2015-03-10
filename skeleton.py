@@ -7,6 +7,8 @@ import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
 from sklearn.svm import SVR
+import pandas as pd
+import seaborn as sns
 
 from numpy.polynomial.polynomial import Polynomial, polyval
 
@@ -99,9 +101,9 @@ def read_path(inpath, basefun):
             if basefun == 'none' :
                 x.append(float(t.isoweekday()))
                 x.append(float(t.hour))
-                x.append(row[1])
-                x.append(row[2])
-                x.append(row[3])
+                x.append(float(row[1]))
+                x.append(float(row[2]))
+                x.append(float(row[3]))
             elif basefun == 'normalized':
                 x.append(float(t.isoweekday()-3.98)/2)
                 x.append(float(t.hour-11.6)/6.93)
@@ -164,7 +166,7 @@ def main():
 
     # always split training and test data!
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X,Y,train_size=0.75)
-
+    print Xtrain.shape
     lin = linear_regression(X,Y,Xtrain,Ytrain,Xtest,Ytest)
     Ypredtrain = lin.predict(Xtrain)
     Ypredtest = lin.predict(Xtest)
@@ -177,20 +179,18 @@ def main():
 
     Ypred = lin.predict(Xval)
     Ypred = np.exp(Ypred)
-    print Ypred
+    #print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
-    plt.figure(1)
-    plt.subplot(211)
-    inputdata1, = plt.plot(Xtrain[:,1], Ytrain, 'bo', label='Ytrain')             #input data
-    predictdata1, = plt.plot(Xtrain[:,1],Ypredtrain,'ro',label='prediction Ytrain')
-    plt.legend(handles=[inputdata1,predictdata1])
-    plt.title('Train-data')
-    plt.subplot(212)
-    inputdata2, =plt.plot(Xtest[:,1],Ytest,'bo', label='Ytest')
-    predictdata2, = plt.plot(Xtest[:,1], Ypredtest,'ro', label='prediction Ytest')
-    plt.legend(handles=[inputdata2,predictdata2])
-    plt.title('Test-data')
 
+    plt.figure(1)
+    pureX = read_path('project_data/validate.csv','none')
+    print pureX.shape
+    Ypred = lin.predict(pureX)
+    print Ypred.shape
+    inputdata1, = plt.plot(pureX[:,2], lin.predict(pureX), 'bo', label='predicted values')             #input data
+    #predictdata1, = plt.plot(pureX[:,2],Y,'ro',label='given values')
+    #plt.legend(handles=[inputdata1,predictdata1])
+    plt.title('input vs prediction')
     plt.show()
 
 
