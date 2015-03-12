@@ -174,20 +174,22 @@ def w4_linear(x):
 def w4_fourier(x):
     return fourier(float(x[4]), 8, 1)
 
+
 def simple_implementation(x):
     y = []
     y.extend(w2_ind(x))
     y.extend(month_w1356_poly(x))
-    y.extend(poly_nd([float(x[0].hour)],5))
+    y.extend(poly_nd([float(x[0].hour)], 5))
     y.extend(rushhour_ind(x))
     y.extend(weekend_ind(x))
     return y
+
 
 def ortho(fns, x):
     y = []
     for fn in fns:
         y.extend(fn(x))
-    return y
+    return np.array(y)
 
 
 def linear_regression(Xtrain, Ytrain):
@@ -197,7 +199,7 @@ def linear_regression(Xtrain, Ytrain):
 
 
 def cheating_regression(Xtrain, Ytrain):
-    regressor = rf.RandomForestRegressor()
+    regressor = rf.RandomForestRegressor(n_estimators=50,n_jobs=-1)
     regressor.transform(Xtrain, threshold=None)
     regressor.fit(Xtrain, Ytrain)
     return regressor
@@ -215,38 +217,41 @@ def ridge_regression(Xtrain,Ytrain):
 
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
-    Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
+    Yo = np.genfromtxt('project_data/train_y.csv', delimiter=',')
     Y = Yo
     Y = np.log(1 + Y)
     Xvalo = read_path('project_data/validate.csv')
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.8)
+    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size=0.8)
 
     X = read_features(Xo, feature_fn)
     Xtrain = read_features(Xtraino, feature_fn)
     Xtest = read_features(Xtesto, feature_fn)
 
+    print 'X.shape: ', X.shape
+
     lin = linear_regression(Xtrain, Ytrain)
     print 'regressor.coef_: ', lin.coef_
     print 'regressor.intercept_: ', lin.intercept_
+    Ypredtrain = lin.predict(X=Xtrain)
+    Ypredtest = lin.predict(X=Xtest)
+    print 'score of lin (train): ', score(Ytrain, Ypredtrain)
+    print 'score of lin (test): ', score(Ytest, Ypredtest)
     scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(lin, X, Y, scoring = scorefunction, cv = 10)
+    scores = skcv.cross_val_score(lin, X, Y, scoring=scorefunction, cv=10)
     print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
-    Ypredtrain = lin.predict(Xtrain)
-    Ypredtest = lin.predict(Xtest)
-    print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
-    print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
-    Xplot = np.matrix(Xtesto)
+#   Xplot = np.matrix(Xtesto)
 #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
 #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
-    forest = cheating_regression(Xtrain, Ytrain)
-    print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
-    print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
+    #forest = cheating_regression(Xtrain, Ytrain)
+    #print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
+    #print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
 
-    Ypred = forest.predict(forest.transform(Xval, threshold=None))
+    #forest.transform(X=Xval, threshold=None)
+    Ypred = lin.predict(X=Xval)
     Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
