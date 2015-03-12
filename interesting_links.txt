@@ -1,3 +1,6 @@
+Seaborn-plotting (smart stanford stuff)
+http://web.stanford.edu/~mwaskom/software/seaborn/tutorial/quantitative_linear_models.html
+
 Emu-Tipp:
 http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
 
