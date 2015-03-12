@@ -6,9 +6,7 @@ import sklearn.linear_model as sklin
 import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
-from sklearn.ensemble import RandomForestRegressor
-
-from numpy.polynomial.polynomial import Polynomial, polyval
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 
 
 def logscore(gtruth,gpred):
@@ -18,6 +16,7 @@ def logscore(gtruth,gpred):
 
 
 def score(gtruth, gpred):
+#   return logscore(gtruth, gpred)
     gpred = np.clip(gpred, 0, np.inf)
     return np.sqrt(np.mean(np.square(gtruth - gpred)))
 
@@ -104,6 +103,11 @@ def read_features(X, features_fn):
     return np.matrix(M)
 
 
+def days_since(x):
+    epoch = datetime.datetime(1970, 1, 1)
+    return fourier(float((x[0] - epoch).days), 100, 365)
+
+
 def time_fourier(x):
     y = [1]
     y.extend(poly(float(x[0].year), 2))
@@ -112,7 +116,7 @@ def time_fourier(x):
     y.extend(fourier(float(x[0].day),          4, 30))
     y.extend(fourier(float(x[0].hour),         4, 24))
 #   y.extend(indicators(range(24), x[0].hour))
-#   y.extend(fourier(float(x[0].minute),       8, 60))
+#   y.extend(fourier(float(x[0].minute),       4, 60))
     return y
 
 
@@ -141,7 +145,7 @@ def month_w1356_poly(x):
     w3 = float(x[3])
     w5 = float(x[5])
     w6 = float(x[6])
-#   y.extend(poly_nd([m, w1, w3, w5, w6], 3))
+    y.extend(poly_nd([w1, w3, w5, w6], 3))
 #   y.extend(poly_nd([(m-7.007)/3.451,
 #                     (w1-0.5)/0.2341, (w3-0.4773)/0.207,
 #                     (w5-0.1966)/0.1399, (w6-0.6291)/0.233], 2))
@@ -177,7 +181,7 @@ def linear_regression(Xtrain, Ytrain):
     return regressor
 
 
-def random_forest_regression(Xtrain, Ytrain):
+def cheating_regression(Xtrain, Ytrain):
     regressor = RandomForestRegressor()
     regressor.fit(Xtrain, Ytrain)
     return regressor
@@ -196,12 +200,13 @@ def ridge_regression(Xtrain,Ytrain):
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
     Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
-    Y = np.log(1 + Yo)
+    Y = Yo
+    Y = np.log(1 + Y)
     Xvalo = read_path('project_data/validate.csv')
     Xval = read_features(Xvalo, feature_fn)
 
     # always split training and test data!
-    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.9)
+    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.8)
 
     X = read_features(Xo, feature_fn)
     Xtrain = read_features(Xtraino, feature_fn)
@@ -221,7 +226,7 @@ def regress(feature_fn):
 #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
 #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
-    forest = random_forest_regression(Xtrain, Ytrain)
+    forest = cheating_regression(Xtrain, Ytrain)
     print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
     print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
 
@@ -262,4 +267,4 @@ def plot_mean_var(X, Yp, Yt):
 
 
 if __name__ == "__main__":
-    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly, w4_linear], x)))
+    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly], x)))
