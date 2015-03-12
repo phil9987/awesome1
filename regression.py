@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt     #plotting functions
 import csv
 import datetime
 import sklearn.linear_model as sklin
+import sklearn.ensemble as rf
 import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 
 
 def logscore(gtruth,gpred):
@@ -76,10 +76,10 @@ def fourier_md(x, d, r): # TODO
 def indicators(vals, x):
     y = []
     for val in vals:
-        if x == val:
+        if int(x)== int(val):
             y.append(1)
         else:
-            y.append(0)
+            y.append(-1)
     return y
 
 
@@ -157,7 +157,14 @@ def w_poly(n_w, d):
 
 
 def w2_ind(x):
+    #print indicators(range(3), x[2])
     return indicators(range(3), x[2])
+
+def rushhour_ind(x):
+    return indicators([7,8,17,18],int(x[0].hour))
+
+def weekend_ind(x):
+    return indicators([5,6],x[0].isoweekday())
 
 
 def w4_linear(x):
@@ -167,6 +174,14 @@ def w4_linear(x):
 def w4_fourier(x):
     return fourier(float(x[4]), 8, 1)
 
+def simple_implementation(x):
+    y = []
+    y.extend(w2_ind(x))
+    y.extend(month_w1356_poly(x))
+    y.extend(poly_nd([float(x[0].hour)],5))
+    y.extend(rushhour_ind(x))
+    y.extend(weekend_ind(x))
+    return y
 
 def ortho(fns, x):
     y = []
@@ -182,14 +197,15 @@ def linear_regression(Xtrain, Ytrain):
 
 
 def cheating_regression(Xtrain, Ytrain):
-    regressor = RandomForestRegressor()
+    regressor = rf.RandomForestRegressor()
+    regressor.transform(Xtrain, threshold=None)
     regressor.fit(Xtrain, Ytrain)
     return regressor
 
 
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : np.linspace(0, 5, 2)}
+    param_grid = {'alpha' : [0.01,0.02,0.1,0.4,0.7,0.75,2,2.1,2.2,2.5,2.55,2,6,5,10]}
     n_scorefun = skmet.make_scorer(lambda x, y: -score(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 10)
     grid_search.fit(Xtrain, Ytrain)
@@ -230,10 +246,7 @@ def regress(feature_fn):
     print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
     print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
 
-#   Ypred = lin.predict(X)
-#   Ypred = np.exp(Ypred) - 1
-#   np.savetxt('project_data/train_ypred.txt', Ypred)
-    Ypred = forest.predict(Xval)
+    Ypred = forest.predict(forest.transform(Xval, threshold=None))
     Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
@@ -267,4 +280,5 @@ def plot_mean_var(X, Yp, Yt):
 
 
 if __name__ == "__main__":
-    regress(lambda x: np.array(ortho([time_fourier, month_w1356_poly], x)))
+    regress(lambda x: ortho([simple_implementation, time_fourier, time_dct], x))
+    #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))

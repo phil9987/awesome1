@@ -1,0 +1,17 @@
+Seaborn-plotting (smart stanford stuff)
+http://web.stanford.edu/~mwaskom/software/seaborn/tutorial/quantitative_linear_models.html
+
+Emu-Tipp:
+http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
+
+THE PERCEPTRON....
+http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html#sklearn.linear_model.Perceptron
+
+linear models overview
+http://scikit-learn.org/stable/modules/linear_model.html
+
+LASSO path
+http://scikit-learn.org/stable/auto_examples/linear_model/plot_lasso_lars.html
+
+LASSO regressor:
+http://scikit-learn.org/0.13/modules/generated/sklearn.linear_model.Lasso.html
