@@ -109,6 +109,7 @@ def days_since(x):
 
 
 def time_fourier(x):
+    epoch = datetime.datetime(1970,1,1)
     y = [1]
     y.extend(poly(float(x[0].year), 2))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
@@ -200,7 +201,7 @@ def linear_regression(Xtrain, Ytrain):
 
 def cheating_regression(Xtrain, Ytrain):
     regressor = rf.RandomForestRegressor(n_estimators=50,n_jobs=-1)
-    regressor.transform(Xtrain, threshold=None)
+#    regressor.transform(Xtrain, threshold=None)
     regressor.fit(Xtrain, Ytrain)
     return regressor
 
@@ -241,14 +242,16 @@ def regress(feature_fn):
     print 'score of lin (test): ', score(Ytest, Ypredtest)
     scorefunction = skmet.make_scorer(score)
     scores = skcv.cross_val_score(lin, X, Y, scoring=scorefunction, cv=10)
-    print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
+    print 'score of lin (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
 #   Xplot = np.matrix(Xtesto)
 #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
 #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
-    #forest = cheating_regression(Xtrain, Ytrain)
-    #print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
-    #print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
+    forest = cheating_regression(Xtrain, Ytrain)
+    print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
+    print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
+    scores = skcv.cross_val_score(forest, X, Y, scoring=scorefunction, cv=10)
+    print 'score of forest (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
 
     #forest.transform(X=Xval, threshold=None)
     Ypred = lin.predict(X=Xval)
@@ -285,5 +288,5 @@ def plot_mean_var(X, Yp, Yt):
 
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([simple_implementation, time_fourier, time_dct], x))
+    regress(lambda x: ortho([simple_implementation, time_fourier], x))
     #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
