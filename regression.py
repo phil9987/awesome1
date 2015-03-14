@@ -8,8 +8,11 @@ import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
 
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors.dist_metrics import DistanceMetric
 
-def logscore(gtruth,gpred):
+def logscore(gtruth, gpred):
+    gtruth = np.clip(gtruth, 0, np.inf)
     gpred = np.clip(gpred, 0, np.inf)
     logdiff = np.log(1 + gtruth) - np.log(1 + gpred)
     return np.sqrt(np.mean(np.square(logdiff)))
@@ -108,6 +111,9 @@ def days_since(x):
     return fourier(float((x[0] - epoch).days), 100, 365)
 
 
+def time_parts(x):
+    return [float(x[0].year), float(x[0].month), float(x[0].isoweekday()), float(x[0].day), float(x[0].hour)]
+
 def time_fourier(x):
     epoch = datetime.datetime(1970,1,1)
     y = [1]
@@ -139,6 +145,11 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
     return y
 
 
+def w_parts(x):
+    return [float(x[1]), float(x[2]), float(x[3]),
+            float(x[4]), float(x[5]), float(x[6])]
+
+
 def month_w1356_poly(x):
     y = []
     m = float(x[0].month) + float(x[0].day)/30
@@ -162,10 +173,10 @@ def w2_ind(x):
     return indicators(range(3), x[2])
 
 def rushhour_ind(x):
-    return indicators([7,8,17,18],int(x[0].hour))
+    return indicators([7,8,17,18], int(x[0].hour))
 
 def weekend_ind(x):
-    return indicators([5,6],x[0].isoweekday())
+    return indicators([5,6], x[0].isoweekday())
 
 
 def w4_linear(x):
@@ -196,6 +207,20 @@ def ortho(fns, x):
 def linear_regression(Xtrain, Ytrain):
     regressor = sklin.LinearRegression()
     regressor.fit(Xtrain, Ytrain)
+    print 'regressor.coef_: ', regressor.coef_
+    print 'regressor.intercept_: ', regressor.intercept_
+    return regressor
+
+
+def nearest_neighbors_regression(Xtrain, Ytrain):
+    param_grid = {'n_neighbors': np.linspace(2,7,6), 'weights': ['uniform', 'distance']}
+    regressor = KNeighborsRegressor(algorithm='auto')
+    regressor.fit(Xtrain,Ytrain)
+    scorefun = skmet.make_scorer(lambda x, y: -score(x, y))
+#   grid_search = skgs.GridSearchCV(regressor, param_grid, scoring = scorefun, cv = 5)
+#   grid_search.fit(Xtrain, Ytrain)
+#   print 'grid_search.best_estimator_: ', grid_search.best_estimator_
+#   return grid_search.best_estimator_
     return regressor
 
 
@@ -205,15 +230,22 @@ def cheating_regression(Xtrain, Ytrain):
     regressor.fit(Xtrain, Ytrain)
     return regressor
 
-
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : [0.01,0.02,0.1,0.4,0.7,0.75,2,2.1,2.2,2.5,2.55,2,6,5,10]}
+    param_grid = {'alpha' : np.linspace(0,10,10)}
     n_scorefun = skmet.make_scorer(lambda x, y: -score(x,y)) # logscore is always maximizing... but we want the minium
-    grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 10)
+    grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 5)
     grid_search.fit(Xtrain, Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     return grid_search.best_estimator_
+
+
+def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest):
+    print 'score of ', name, ' (train): ', score(Ytrain, regressor.predict(Xtrain))
+    print 'score of ', name, ' (test): ', score(Ytest, regressor.predict(Xtest))
+    scorefunction = skmet.make_scorer(score)
+#   scores = skcv.cross_val_score(regressor, X, Y, scoring=scorefunction, cv=5)
+#   print 'score of ', name, ' (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
 
 
 def regress(feature_fn):
@@ -234,24 +266,17 @@ def regress(feature_fn):
     print 'X.shape: ', X.shape
 
     lin = linear_regression(Xtrain, Ytrain)
-    print 'regressor.coef_: ', lin.coef_
-    print 'regressor.intercept_: ', lin.intercept_
-    Ypredtrain = lin.predict(X=Xtrain)
-    Ypredtest = lin.predict(X=Xtest)
-    print 'score of lin (train): ', score(Ytrain, Ypredtrain)
-    print 'score of lin (test): ', score(Ytest, Ypredtest)
-    scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(lin, X, Y, scoring=scorefunction, cv=10)
-    print 'score of lin (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
-#   Xplot = np.matrix(Xtesto)
-#   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
-#   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
+    test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest)
 
     forest = cheating_regression(Xtrain, Ytrain)
-    print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
-    print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
-    scores = skcv.cross_val_score(forest, X, Y, scoring=scorefunction, cv=10)
-    print 'score of forest (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
+    test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest)
+
+    knn = nearest_neighbors_regression(Xtrain, Ytrain)
+    test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest)
+
+    #   Xplot = np.matrix(Xtesto)
+    #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
+    #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
     #forest.transform(X=Xval, threshold=None)
     Ypred = lin.predict(X=Xval)
@@ -289,4 +314,5 @@ def plot_mean_var(X, Yp, Yt):
 
 if __name__ == "__main__":
     regress(lambda x: ortho([simple_implementation, time_fourier], x))
+#   regress(lambda x: ortho([time_parts, w_parts], x))
     #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
