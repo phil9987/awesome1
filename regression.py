@@ -7,6 +7,8 @@ import sklearn.ensemble as rf
 import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
+from sklearn import linear_model
+import math
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neighbors.dist_metrics import DistanceMetric
@@ -100,9 +102,14 @@ def read_path(inpath):
 
 def read_features(X, features_fn):
     M = []
+    x_rows =  len(X)
+    i = 1
     for x in X:
         m = features_fn(x)
         M.append(m)
+        if i % 1000 == 0:
+            print str(i) + ' of ' + str(x_rows) + ' rows processed...'
+        i = i+1
     return np.matrix(M)
 
 
@@ -115,7 +122,6 @@ def time_parts(x):
     return [float(x[0].year), float(x[0].month), float(x[0].isoweekday()), float(x[0].day), float(x[0].hour)]
 
 def time_fourier(x):
-    epoch = datetime.datetime(1970,1,1)
     y = [1]
     y.extend(poly(float(x[0].year), 2))
     y.extend(fourier(float(x[0].isoweekday()), 4, 7))
@@ -133,15 +139,12 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
     L1 = 7
     L2 = 12
     L3 = 24
-    L4 = 60
     for i in range(4):
         for j in range(4):
             for k in range(8):
-                for m in range(8):
-                    y.append(np.cos(np.pi/L1*(i+0.5)*float(t.isoweekday()))*
-                             np.cos(np.pi/L2*(j+0.5)*float(t.month))*
-                             np.cos(np.pi/L3*(k+0.5)*float(t.hour))*
-                             np.cos(np.pi/L4*(m+0.5)*float(t.minute)))
+                y.append(np.cos(np.pi/L1*(i+0.5)*float(t.isoweekday()))*
+                         np.cos(np.pi/L2*(j+0.5)*float(t.month))*
+                         np.cos(np.pi/L3*(k+0.5)*float(t.hour)))
     return y
 
 
@@ -173,10 +176,10 @@ def w2_ind(x):
     return indicators(range(3), x[2])
 
 def rushhour_ind(x):
-    return indicators([7,8,17,18], int(x[0].hour))
+    return indicators([7,8,17,18],int(x[2]))
 
 def weekend_ind(x):
-    return indicators([5,6], x[0].isoweekday())
+    return indicators([5,6],x[1])
 
 
 def w4_linear(x):
@@ -187,13 +190,32 @@ def w4_fourier(x):
     return fourier(float(x[4]), 8, 1)
 
 
+# Assume that all values in x are ready-to-use features (i. e. no timestamps)
 def simple_implementation(x):
     y = []
-    y.extend(w2_ind(x))
+    # Make x[0], x[1], x[2]
+    xf = [x[0].month, x[0].isoweekday(), x[0].hour]
+    xf.extend(x[1:])
+    xf = [float(i) for i in xf]
+    y.extend(xf)
+    base_feature_len = len(x)
+    #print 'DEBUG: number base features: %d' %len(x)
     y.extend(month_w1356_poly(x))
-    y.extend(poly_nd([float(x[0].hour)], 5))
-    y.extend(rushhour_ind(x))
-    y.extend(weekend_ind(x))
+    y.extend(w2_ind(xf))
+    y.extend(poly_nd([float(xf[2])], 5))
+    y.extend(rushhour_ind(xf))
+    y.extend(weekend_ind(xf))
+    for xk in xf:
+        y.append(math.sqrt(float(xk)))
+        y.append(math.log(float(xk) + 1, math.e))
+        y.append(1/(float(xk) + 1))
+    #generate all possible (unique) combination between the features.
+    #num_y_cols = len(y)
+    for idx in range(0, base_feature_len-1):
+        for idx2 in range(idx, base_feature_len-1):
+            y.append(float(y[idx]*y[idx2]))
+        #for idx2 in range(idx,num_y_cols):
+        #    y.append(float(yk*y[idx2]))
     return y
 
 
@@ -225,10 +247,11 @@ def nearest_neighbors_regression(Xtrain, Ytrain):
 
 
 def cheating_regression(Xtrain, Ytrain):
-    regressor = rf.RandomForestRegressor(n_estimators=50,n_jobs=-1)
-#    regressor.transform(Xtrain, threshold=None)
+    regressor = rf.RandomForestRegressor(n_jobs=-1,verbose=1)
+    #regressor.transform(Xtrain, threshold=None)
     regressor.fit(Xtrain, Ytrain)
     return regressor
+
 
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
@@ -238,6 +261,21 @@ def ridge_regression(Xtrain,Ytrain):
     grid_search.fit(Xtrain, Ytrain)
     print 'grid_search.best_estimator_: ', grid_search.best_estimator_
     return grid_search.best_estimator_
+
+
+def lasso_regression(Xtrain, Ytrain, Xtest, Ytest):
+    #Xt = lin.transform(X,threshold=None)
+    #regressor = linear_model.LassoLars(alpha=0.01,verbose=1)
+    alphas = np.logspace(-6, -1, 10)
+    regressor = linear_model.Lasso(max_iter=10000, normalize=True, tol=1e-100)
+    scores = [regressor.set_params(alpha=alpha).fit(Xtrain, Ytrain).score(Xtest, Ytest)
+              for alpha in alphas]
+    best_alpha = alphas[scores.index(max(scores))]
+    print 'best_alpha: ', best_alpha
+    regressor.alpha = best_alpha
+    regressor.fit(Xtrain,Ytrain)
+    print 'number of nonzero coefficients: %d' %sum([1 for coef in regressor.coef_ if coef != 0])
+    return regressor
 
 
 def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest):
@@ -250,18 +288,30 @@ def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest):
 
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
-    Yo = np.genfromtxt('project_data/train_y.csv', delimiter=',')
-    Y = Yo
-    Y = np.log(1 + Y)
+    print len(Xo)
+
+    Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
+    print 'DEBUG: data read'
+    Y = np.log(1 + Yo)
+    X = read_features(Xo, feature_fn)
+    print 'DEBUG: total nb of base-functions: %d' %np.shape(X)[1]
+    #np.std(X, axis=0) == 0
+    print 'DEBUG: transform training data features'
     Xvalo = read_path('project_data/validate.csv')
+    Xtesto = read_path('project_data/test.csv')
+    print 'DEBUG: transform validation data features'
     Xval = read_features(Xvalo, feature_fn)
+    Xtest = read_features(Xtesto, feature_fn)
+    print 'DEBUG: features transformed'
 
     # always split training and test data!
-    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size=0.8)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.7)
+    print 'DEBUG: data split up into train and test data'
 
-    X = read_features(Xo, feature_fn)
-    Xtrain = read_features(Xtraino, feature_fn)
-    Xtest = read_features(Xtesto, feature_fn)
+    #------------optimized------------------------
+    #Xtrain = read_features(Xtraino, feature_fn)
+    #Xtest = read_features(Xtesto, feature_fn)
+    #------------optimized------------------------
 
     print 'X.shape: ', X.shape
 
@@ -274,45 +324,25 @@ def regress(feature_fn):
     knn = nearest_neighbors_regression(Xtrain, Ytrain)
     test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest)
 
-    #   Xplot = np.matrix(Xtesto)
-    #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
-    #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
+    lasso = lasso_regression(Xtrain, Ytrain, Xtest, Ytest)
+    test_and_print('lasso', lasso, X, Y, Xtrain, Ytrain, Xtest, Ytest)
 
     #forest.transform(X=Xval, threshold=None)
-    Ypred = lin.predict(X=Xval)
-    Ypred = np.exp(Ypred) - 1
-    print Ypred
-    np.savetxt('project_data/validate_y.txt', Ypred)
-    return Ypred
-
-
-def plot(Xo, Ypred, Ytruth):
-    plt.figure(1)
-    input, = plt.plot(Xo, np.exp(Ypred)-1, 'bo', label='Ypred')
-    predict, = plt.plot(Xo, np.exp(Ytruth)-1, 'ro', label='Ytruth')
-    plt.legend(handles=[input, predict])
-    plt.savefig("plot.png")
-
-
-def plot_mean_var(X, Yp, Yt):
-    print np.shape(X)
-    vals = np.unique(np.array(X))
-    Mp = np.zeros(np.shape(vals))
-    Mt = np.zeros(np.shape(vals))
-#   E = np.zeros(np.shape(X))
-    for i in range(np.shape(vals)[0]):
-        v = vals[i]
-        Mp[i] = np.mean([y for x, y in zip(X, Yp) if x == v])
-        Mt[i] = np.mean([y for x, y in zip(X, Yt) if x == v])
-#       E[i] = np.std(np.select(Y, X == v))
-    plt.figure(2)
-    pred, = plt.plot(vals, Mp, 'b-', label="Ypred")
-    truth, = plt.plot(vals, Mt, 'r-', label="Ytruth")
-    plt.legend(handles=[pred, truth])
-    plt.savefig("mean_var.png")
+    regressor = lasso
+    #Ypred = regressor.predict(regressor.transform(Xval, threshold=None))
+    #predict validation data
+    Ypredval = regressor.predict(Xval)
+    Ypredval = np.exp(Ypredval) - 1
+    print Ypredval
+    np.savetxt('project_data/validate_y.txt', Ypredval)
+    #predict test-data
+    Ypredtest = regressor.predict(Xtest)
+    Ypredtest = np.exp(Ypredtest) -1
+    np.savetxt('project_data/test_y.txt', Ypredtest)
+    return Ypredval
 
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([simple_implementation, time_fourier], x))
-#   regress(lambda x: ortho([time_parts, w_parts], x))
+    regress(lambda x: ortho([simple_implementation, time_fourier, time_dct], x))
+    #regress(lambda x: ortho([time_parts, w_parts], x))
     #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
