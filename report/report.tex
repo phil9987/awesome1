@@ -18,7 +18,7 @@
 \renewcommand{\familydefault}{\sfdefault}
 
 \title{Introduction to Learning and Intelligent Systems - Spring 2015}
-\author{taubnert@student.ethz.ch\\ philj@student.ethz.ch\\ susik@student.ethz.ch\\}
+\author{taubnert@student.ethz.ch\\ junkerp@student.ethz.ch\\ susik@student.ethz.ch\\}
 \date{\today}
 
 \begin{document}
@@ -48,7 +48,8 @@ We concluded that we can do almost as good as the random forest regression.
 
 \subsection{Features}
 Different heuristics lead us to use different basis functions for our features.
-
+Because the data is about train usage and we have a timestamp provided, we assumed that there will be some periodicity observeable.
+This assumption let us add the fourier and also the discrete cosine transformation as base-functions.
 
 \subsection{Scores}
 
