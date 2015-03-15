@@ -280,7 +280,7 @@ def lasso_regression(Xtrain, Ytrain, Xtest, Ytest):
     return regressor
 
 
-def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval):
+def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub):
     print 'score of ', name, ' (train): ', score(Ytrain, regressor.predict(Xtrain))
     print 'score of ', name, ' (test): ', score(Ytest, regressor.predict(Xtest))
     scorefunction = skmet.make_scorer(score)
@@ -291,14 +291,14 @@ def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval):
     print Ypredval
     np.savetxt('project_data/validate_y_' + name + '.txt', Ypredval)
     #predict test-data
-    Ypredtest = regressor.predict(Xtest)
-    Ypredtest = np.exp(Ypredtest) -1
+    Ypredtest = regressor.predict(Xtestsub)
+    Ypredtest = np.exp(Ypredtest) - 1
     np.savetxt('project_data/test_y_' + name + '.txt', Ypredtest)
 
 
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
-    print len(Xo)
+    print 'rows: ', len(Xo)
 
     Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
     print 'DEBUG: data read'
@@ -308,40 +308,31 @@ def regress(feature_fn):
     #np.std(X, axis=0) == 0
     print 'DEBUG: transform training data features'
     Xvalo = read_path('project_data/validate.csv')
-    Xtesto = read_path('project_data/test.csv')
+    Xtestsubo = read_path('project_data/test.csv')
     print 'DEBUG: transform validation data features'
     Xval = read_features(Xvalo, feature_fn)
-    Xtest = read_features(Xtesto, feature_fn)
+    Xtestsub = read_features(Xtestsubo, feature_fn)
     print 'DEBUG: features transformed'
 
     # always split training and test data!
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.8)
     print 'DEBUG: data split up into train and test data'
 
-    #------------optimized------------------------
-    #Xtrain = read_features(Xtraino, feature_fn)
-    #Xtest = read_features(Xtesto, feature_fn)
-    #------------optimized------------------------
-
-    print 'X.shape: ', X.shape
-
     lin = linear_regression(Xtrain, Ytrain)
-    test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+    test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub)
 
     ridge = ridge_regression(Xtrain, Ytrain)
-    test_and_print('ridge', ridge, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+    test_and_print('ridge', ridge, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub)
 
     forest = cheating_regression(X, Y)
-    test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+    test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub)
 
     knn = nearest_neighbors_regression(Xtrain, Ytrain)
-    test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+    test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub)
 
     lasso = lasso_regression(Xtrain, Ytrain, Xtest, Ytest)
-    test_and_print('lasso', lasso, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+    test_and_print('lasso', lasso, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval, Xtestsub)
 
 
 if __name__ == "__main__":
     regress(lambda x: ortho([simple_implementation, time_fourier, time_dct], x))
-    #regress(lambda x: ortho([time_parts, w_parts], x))
-    #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
