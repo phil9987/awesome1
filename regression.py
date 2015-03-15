@@ -257,7 +257,7 @@ def cheating_regression(Xtrain, Ytrain):
 
 def ridge_regression(Xtrain,Ytrain):
     ridge_regressor = sklin.Ridge(fit_intercept=False, normalize=False)
-    param_grid = {'alpha' : np.linspace(0,10,10)}
+    param_grid = {'alpha' : np.linspace(0,10,5)}
     n_scorefun = skmet.make_scorer(lambda x, y: -score(x,y)) # logscore is always maximizing... but we want the minium
     grid_search = skgs.GridSearchCV(ridge_regressor, param_grid, scoring = n_scorefun, cv = 5)
     grid_search.fit(Xtrain, Ytrain)
@@ -327,6 +327,9 @@ def regress(feature_fn):
 
     lin = linear_regression(Xtrain, Ytrain)
     test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
+
+    #ridge = ridge_regression(Xtrain, Ytrain)
+    #test_and_print('ridge', ridge, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
     forest = cheating_regression(Xtrain, Ytrain)
     test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
