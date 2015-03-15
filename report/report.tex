@@ -43,8 +43,11 @@ The function $f$ can then be reconstructed by $f(x) = \exp(f'(x)) - 1$.
 We used a number of different regressors.
 Most of them we understand how they work but we also used the \emph{RandomForestRegressor} which we don't understand at all.
 
-In the end, we compared a simple linear regression, a ridge regression, a k-nearest-neighbours regression, a lasso regression with the random forest regression.
+In the end, we compared a simple linear regression, a ridge regression, a $k$ nearest neighbors regression, a lasso regression with the random forest regression.
 We concluded that we can do almost as good as the random forest regression.
+
+For some parameters of the regressors, e.\ g.\ the $\alpha$ value for ridge regression and the $k$ value for $k$ nearest neighbors,
+we used a simple grid search.
 
 \subsection{Features}
 Different heuristics lead us to use different basis functions for our features.
@@ -56,12 +59,16 @@ We concluded that time in the minute frequency and the weather data D correspond
 
 \subsection{Scores}
 
-\begin{tabular}{lll}
-Linear        & & \\
-Ridge         & & \\
-Lasso         & & \\
-K-NN          & & \\
-Random Forest & &
+The scores with our final run for generating the test set are the following.
+Because we scored best with the random forest generator, we decided to go with that one,
+although it seem to have overfit to our training data.
+
+\begin{tabular}{rlll}
+Linear        & 0.4249 & 0.4326 & 0.4460 \\
+Ridge         & 0.4280 & 0.4354 & 0.4477 \\
+Random Forest & 0.1619 & 0.1606 & 0.3925 \\
+K-NN          & 0.4949 & 0.6278 & 0.6047 \\
+Lasso         & 0.4276 & 0.4345 & 0.4477
 \end{tabular}
 
 \end{document}
