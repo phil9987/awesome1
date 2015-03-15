@@ -184,6 +184,10 @@ def w4_fourier(x):
 
 def simple_implementation(x):
     y = []
+    xf = [float(i) for i in x]
+    y.extend(xf)
+    base_feature_len = len(x)
+    #print 'DEBUG: number base features: %d' %len(x)
     y.extend(w2_ind(x))
     y.extend(month_w1356_poly(x))
     y.extend(poly_nd([float(x[2])],5))
@@ -193,8 +197,13 @@ def simple_implementation(x):
         y.append(math.sqrt(float(xk)))
         y.append(math.log(float(xk)+1,math.e))
         y.append(1/(float(xk)+1))
-    for yk in y:
-        print yk
+    #generate all possible (unique) combination between the features.
+    #num_y_cols = len(y)
+    for idx in range(0,base_feature_len-1):
+        for idx2 in range(idx,base_feature_len-1):
+            y.append(float(y[idx]*y[idx2]))
+        #for idx2 in range(idx,num_y_cols):
+        #    y.append(float(yk*y[idx2]))
     return y
 
 def ortho(fns, x):
@@ -229,18 +238,20 @@ def ridge_regression(Xtrain,Ytrain):
 
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
-
+    print len(Xo)
 
     Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
     print 'DEBUG: data read'
     Y = np.log(1 + Yo)
     X = read_features(Xo, feature_fn)
-    np.std(X, axis=0) == 0
-    print X[0]
+    print 'DEBUG: total nb of base-functions: %d' %np.shape(X)[1]
+    #np.std(X, axis=0) == 0
     print 'DEBUG: transform training data features'
     Xvalo = read_path('project_data/validate.csv')
+    Xtesto = read_path('project_data/test.csv')
     print 'DEBUG: transform validation data features'
     Xval = read_features(Xvalo, feature_fn)
+    Xtest = read_features(Xtesto, feature_fn)
     print 'DEBUG: features transformed'
 
     # always split training and test data!
@@ -259,15 +270,16 @@ def regress(feature_fn):
     print 'DEBUG: regressor created'
     #Xt = lin.transform(X,threshold=None)
     #regressor = linear_model.LassoLars(alpha=0.01,verbose=1)
-    alphas = np.logspace(-4, -1, 6)
-    regressor = linear_model.Lasso(max_iter=10000)
+    alphas = np.logspace(-6, -1, 10)
+    regressor = linear_model.Lasso(max_iter=10000, normalize=True,tol=1e-100)
     scores = [regressor.set_params(alpha=alpha).fit(Xtrain,Ytrain).score(Xtest,Ytest)
               for alpha in alphas]
     best_alpha = alphas[scores.index(max(scores))]
     print best_alpha
     regressor.alpha = best_alpha
     regressor.fit(Xtrain,Ytrain)
-    print regressor.coef_
+    print 'number of nonzero coefficients: %d' %sum([1 for coef in regressor.coef_ if coef != 0])
+    print
 
 
     #Xvalt = lin.transform(Xval,threshold=None)
@@ -285,7 +297,7 @@ def regress(feature_fn):
 
 
     scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(regressor, X, Y, scoring = scorefunction, cv = 10)
+    scores = skcv.cross_val_score(regressor, X, Y, scoring = scorefunction, cv = 5)
     print 'DEBUG: scorer created'
     print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
     Ypredtrain = regressor.predict(Xtrain)
@@ -303,11 +315,16 @@ def regress(feature_fn):
     print 'score of forest (test): ', score(Ytest, regressor.predict(Xtest))
 
     #Ypred = regressor.predict(regressor.transform(Xval, threshold=None))
-    Ypred = regressor.predict(Xval)
-    Ypred = np.exp(Ypred) - 1
-    print Ypred
-    np.savetxt('project_data/validate_y.txt', Ypred)
-    return Ypred
+    #predict validation data
+    Ypredval = regressor.predict(Xval)
+    Ypredval = np.exp(Ypredval) - 1
+    print Ypredval
+    np.savetxt('project_data/validate_y.txt', Ypredval)
+    #predict test-data
+    Ypredtest = regressor.predict(Xtest)
+    Ypredtest = np.exp(Ypredtest) -1
+    np.savetxt('project_data/test_y.txt', Ypredtest)
+    return Ypredval
 
 
 def plot(Xo, Ypred, Ytruth):
@@ -337,5 +354,5 @@ def plot_mean_var(X, Yp, Yt):
 
 
 if __name__ == "__main__":
-    regress(lambda x: ortho([simple_implementation, time_fourier, time_dct], x))
+    regress(lambda x: ortho([simple_implementation, time_fourier,time_dct], x))
     #regress(lambda x: ortho([time_fourier, month_w1356_poly], x))
