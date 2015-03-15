@@ -125,10 +125,10 @@ def time_parts(x):
 def time_fourier(x):
     y = [1]
     y.extend(poly(float(x[0].year), 2))
-    y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].month),        4, 12))
+    y.extend(fourier(float(x[0].isoweekday()), 4, 7))
     y.extend(fourier(float(x[0].day),          4, 30))
-    y.extend(fourier(float(x[0].hour),         4, 24))
+    y.extend(fourier(float(x[0].hour),         8, 24))
 #   y.extend(indicators(range(24), x[0].hour))
 #   y.extend(fourier(float(x[0].minute),       4, 60))
     return y
@@ -315,7 +315,7 @@ def regress(feature_fn):
     print 'DEBUG: features transformed'
 
     # always split training and test data!
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.7)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.8)
     print 'DEBUG: data split up into train and test data'
 
     #------------optimized------------------------
@@ -331,7 +331,7 @@ def regress(feature_fn):
     ridge = ridge_regression(Xtrain, Ytrain)
     test_and_print('ridge', ridge, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
-    forest = cheating_regression(Xtrain, Ytrain)
+    forest = cheating_regression(X, Y)
     test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
     knn = nearest_neighbors_regression(Xtrain, Ytrain)

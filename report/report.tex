@@ -51,15 +51,17 @@ Different heuristics lead us to use different basis functions for our features.
 Because the data is about train usage and we have a timestamp provided, we assumed that there will be some periodicity observeable.
 This assumption let us add the fourier and also the discrete cosine transformation as base-functions.
 
+We deliberately didn't use all of the available data to fit.
+We concluded that time in the minute frequency and the weather data D corresponds mostly to noise.
+
 \subsection{Scores}
 
-
-% Some findings
-% logscore -> least-squares
-% Basisfunctions: fourier, polynoms (indicator functions?)
-% Mean/Std
-
-% W4: highly likely to overfit
-
+\begin{tabular}{lll}
+Linear        & & \\
+Ridge         & & \\
+Lasso         & & \\
+K-NN          & & \\
+Random Forest & &
+\end{tabular}
 
 \end{document}
