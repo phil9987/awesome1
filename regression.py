@@ -121,6 +121,7 @@ def days_since(x):
 def time_parts(x):
     return [float(x[0].year), float(x[0].month), float(x[0].isoweekday()), float(x[0].day), float(x[0].hour)]
 
+
 def time_fourier(x):
     y = [1]
     y.extend(poly(float(x[0].year), 2))
@@ -172,11 +173,12 @@ def w_poly(n_w, d):
 
 
 def w2_ind(x):
-    #print indicators(range(3), x[2])
     return indicators(range(3), x[2])
+
 
 def rushhour_ind(x):
     return indicators([7,8,17,18],int(x[2]))
+
 
 def weekend_ind(x):
     return indicators([5,6],x[1])
@@ -235,9 +237,9 @@ def linear_regression(Xtrain, Ytrain):
 
 
 def nearest_neighbors_regression(Xtrain, Ytrain):
-    param_grid = {'n_neighbors': np.linspace(2,7,6), 'weights': ['uniform', 'distance']}
+    param_grid = {'n_neighbors': np.linspace(2, 7, 6), 'weights': ['uniform', 'distance']}
     regressor = KNeighborsRegressor(algorithm='auto')
-    regressor.fit(Xtrain,Ytrain)
+    regressor.fit(Xtrain, Ytrain)
     scorefun = skmet.make_scorer(lambda x, y: -score(x, y))
 #   grid_search = skgs.GridSearchCV(regressor, param_grid, scoring = scorefun, cv = 5)
 #   grid_search.fit(Xtrain, Ytrain)
@@ -278,12 +280,20 @@ def lasso_regression(Xtrain, Ytrain, Xtest, Ytest):
     return regressor
 
 
-def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest):
+def test_and_print(name, regressor, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval):
     print 'score of ', name, ' (train): ', score(Ytrain, regressor.predict(Xtrain))
     print 'score of ', name, ' (test): ', score(Ytest, regressor.predict(Xtest))
     scorefunction = skmet.make_scorer(score)
 #   scores = skcv.cross_val_score(regressor, X, Y, scoring=scorefunction, cv=5)
 #   print 'score of ', name, ' (cv) mean : ', np.mean(scores), ' +/- ', np.std(scores)
+    Ypredval = regressor.predict(Xval)
+    Ypredval = np.exp(Ypredval) - 1
+    print Ypredval
+    np.savetxt('project_data/validate_y_' + name + '.txt', Ypredval)
+    #predict test-data
+    Ypredtest = regressor.predict(Xtest)
+    Ypredtest = np.exp(Ypredtest) -1
+    np.savetxt('project_data/test_y_' + name + '.txt', Ypredtest)
 
 
 def regress(feature_fn):
@@ -316,30 +326,16 @@ def regress(feature_fn):
     print 'X.shape: ', X.shape
 
     lin = linear_regression(Xtrain, Ytrain)
-    test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest)
+    test_and_print('linear', lin, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
     forest = cheating_regression(Xtrain, Ytrain)
-    test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest)
+    test_and_print('forest', forest, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
     knn = nearest_neighbors_regression(Xtrain, Ytrain)
-    test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest)
+    test_and_print('k-nn', knn, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
-    lasso = lasso_regression(Xtrain, Ytrain, Xtest, Ytest)
-    test_and_print('lasso', lasso, X, Y, Xtrain, Ytrain, Xtest, Ytest)
-
-    #forest.transform(X=Xval, threshold=None)
-    regressor = lasso
-    #Ypred = regressor.predict(regressor.transform(Xval, threshold=None))
-    #predict validation data
-    Ypredval = regressor.predict(Xval)
-    Ypredval = np.exp(Ypredval) - 1
-    print Ypredval
-    np.savetxt('project_data/validate_y.txt', Ypredval)
-    #predict test-data
-    Ypredtest = regressor.predict(Xtest)
-    Ypredtest = np.exp(Ypredtest) -1
-    np.savetxt('project_data/test_y.txt', Ypredtest)
-    return Ypredval
+    #lasso = lasso_regression(Xtrain, Ytrain, Xtest, Ytest)
+    #test_and_print('lasso', lasso, X, Y, Xtrain, Ytrain, Xtest, Ytest, Xval)
 
 
 if __name__ == "__main__":
