@@ -1,0 +1,61 @@
+\documentclass[a4paper, 11pt]{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[pdftex]{hyperref}
+
+% Lengths and indenting
+\setlength{\textwidth}{16.5cm}
+\setlength{\marginparwidth}{1.5cm}
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{0.15cm}
+\setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm}
+\setlength{\evensidemargin}{\oddsidemargin}
+\setlength{\topmargin}{0cm}
+\setlength{\headheight}{0cm}
+\setlength{\headsep}{0cm}
+
+\renewcommand{\familydefault}{\sfdefault}
+
+\title{Introduction to Learning and Intelligent Systems - Spring 2015}
+\author{taubnert@student.ethz.ch\\ philj@student.ethz.ch\\ susik@student.ethz.ch\\}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Project 1 : Regression}
+
+%Briefly describe the steps used to produce the solution. Feel
+%free to add plots or screenshots if you think it's necessary. The
+%report should contain a maximum of 2 pages.
+
+
+\subsection{logscore}
+Since we can not use logscore directly as a distance function during regression,
+we need to transform our data $x,y$.
+Suppose we want to search a function $f(x)$.
+Then to minimize $logscore(f(x),y)$ we minimize the two-norm $||f'(x) - y'||_2$ instead.
+Looking at the definition of $logscore$, we see that this can be accomplished by choosing $f'(x) = \log(1 + f(x))$ and $y' = \log(1 + y)$.
+The function $f$ can then be reconstructed by $f(x) = \exp(f'(x)) - 1$.
+
+\subsection{Regressors}
+We used a number of different regressors.
+Most of them we understand how they work but we also used the \emph{RandomForestRegressor} which we don't understand at all.
+
+In the end, we compared a simple linear regression, a ridge regression, a k-nearest-neighbours regression, a lasso regression with the random forest regression.
+We concluded that we can do almost as good as the random forest regression.
+
+\subsection{Features}
+Different heuristics lead us to use different basis functions for our features.
+
+
+% Some findings
+% logscore -> least-squares
+% Basisfunctions: fourier, polynoms (indicator functions?)
+% Mean/Std
+
+% W4: highly likely to overfit
+
+
+\end{document}
