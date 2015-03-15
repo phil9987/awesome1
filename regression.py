@@ -7,6 +7,9 @@ import sklearn.ensemble as rf
 import sklearn.metrics as skmet
 import sklearn.cross_validation as skcv
 import sklearn.grid_search as skgs
+from sklearn import linear_model
+import math
+
 
 
 def logscore(gtruth,gpred):
@@ -89,7 +92,9 @@ def read_path(inpath):
         reader = csv.reader(fin, delimiter=',')
         for row in reader:
             t = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S')
-            x = [t]
+            x = [float(t.month)]
+            x.append(float(t.weekday()))
+            x.append(float(t.hour))
             x.extend(row[1:])
             X.append(x)
     return X
@@ -97,9 +102,14 @@ def read_path(inpath):
 
 def read_features(X, features_fn):
     M = []
+    x_rows =  len(X)
+    i = 1
     for x in X:
         m = features_fn(x)
         M.append(m)
+        if i % 100 == 0:
+            print str(i) + ' of ' + str(x_rows) + ' rows processed...'
+        i = i+1
     return np.matrix(M)
 
 
@@ -110,11 +120,11 @@ def days_since(x):
 
 def time_fourier(x):
     y = [1]
-    y.extend(poly(float(x[0].year), 2))
-    y.extend(fourier(float(x[0].isoweekday()), 4, 7))
-    y.extend(fourier(float(x[0].month),        4, 12))
-    y.extend(fourier(float(x[0].day),          4, 30))
-    y.extend(fourier(float(x[0].hour),         4, 24))
+    #y.extend(poly(float(x[0].year), 2))
+    y.extend(fourier(float(x[1]), 4, 7))
+    y.extend(fourier(float(x[0]),        4, 12))
+    #y.extend(fourier(float(x[0].day),          4, 30))
+    y.extend(fourier(float(x[2]),         4, 24))
 #   y.extend(indicators(range(24), x[0].hour))
 #   y.extend(fourier(float(x[0].minute),       4, 60))
     return y
@@ -122,7 +132,6 @@ def time_fourier(x):
 
 def time_dct(x): # Discrete cosine transform over multiple dimensions
     y = []
-    t = x[0]
     L1 = 7
     L2 = 12
     L3 = 24
@@ -131,16 +140,15 @@ def time_dct(x): # Discrete cosine transform over multiple dimensions
         for j in range(4):
             for k in range(8):
                 for m in range(8):
-                    y.append(np.cos(np.pi/L1*(i+0.5)*float(t.isoweekday()))*
-                             np.cos(np.pi/L2*(j+0.5)*float(t.month))*
-                             np.cos(np.pi/L3*(k+0.5)*float(t.hour))*
-                             np.cos(np.pi/L4*(m+0.5)*float(t.minute)))
+                    y.append(np.cos(np.pi/L1*(i+0.5)*float(x[1]))*
+                             np.cos(np.pi/L2*(j+0.5)*float(x[0]))*
+                             np.cos(np.pi/L3*(k+0.5)*float(x[2])))
     return y
 
 
 def month_w1356_poly(x):
     y = []
-    m = float(x[0].month) + float(x[0].day)/30
+    m = float(x[0])
     w1 = float(x[1])
     w3 = float(x[3])
     w5 = float(x[5])
@@ -161,10 +169,10 @@ def w2_ind(x):
     return indicators(range(3), x[2])
 
 def rushhour_ind(x):
-    return indicators([7,8,17,18],int(x[0].hour))
+    return indicators([7,8,17,18],int(x[2]))
 
 def weekend_ind(x):
-    return indicators([5,6],x[0].isoweekday())
+    return indicators([5,6],x[1])
 
 
 def w4_linear(x):
@@ -178,9 +186,15 @@ def simple_implementation(x):
     y = []
     y.extend(w2_ind(x))
     y.extend(month_w1356_poly(x))
-    y.extend(poly_nd([float(x[0].hour)],5))
+    y.extend(poly_nd([float(x[2])],5))
     y.extend(rushhour_ind(x))
     y.extend(weekend_ind(x))
+    for xk in x:
+        y.append(math.sqrt(float(xk)))
+        y.append(math.log(float(xk)+1,math.e))
+        y.append(1/(float(xk)+1))
+    for yk in y:
+        print yk
     return y
 
 def ortho(fns, x):
@@ -197,8 +211,8 @@ def linear_regression(Xtrain, Ytrain):
 
 
 def cheating_regression(Xtrain, Ytrain):
-    regressor = rf.RandomForestRegressor()
-    regressor.transform(Xtrain, threshold=None)
+    regressor = rf.RandomForestRegressor(n_jobs=-1,verbose=2)
+    #regressor.transform(Xtrain, threshold=None)
     regressor.fit(Xtrain, Ytrain)
     return regressor
 
@@ -215,38 +229,81 @@ def ridge_regression(Xtrain,Ytrain):
 
 def regress(feature_fn):
     Xo = read_path('project_data/train.csv')
+
+
     Yo = np.genfromtxt('project_data/train_y.csv', delimiter = ',')
-    Y = Yo
-    Y = np.log(1 + Y)
+    print 'DEBUG: data read'
+    Y = np.log(1 + Yo)
+    X = read_features(Xo, feature_fn)
+    np.std(X, axis=0) == 0
+    print X[0]
+    print 'DEBUG: transform training data features'
     Xvalo = read_path('project_data/validate.csv')
+    print 'DEBUG: transform validation data features'
     Xval = read_features(Xvalo, feature_fn)
+    print 'DEBUG: features transformed'
 
     # always split training and test data!
-    Xtraino, Xtesto, Ytrain, Ytest = skcv.train_test_split(Xo, Y, train_size = 0.8)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size = 0.7)
+    print 'DEBUG: data split up into train and test data'
 
-    X = read_features(Xo, feature_fn)
-    Xtrain = read_features(Xtraino, feature_fn)
-    Xtest = read_features(Xtesto, feature_fn)
+    #------------optimized------------------------
+    #Xtrain = read_features(Xtraino, feature_fn)
+    #Xtest = read_features(Xtesto, feature_fn)
+    #------------optimized------------------------
 
-    lin = linear_regression(Xtrain, Ytrain)
-    print 'regressor.coef_: ', lin.coef_
-    print 'regressor.intercept_: ', lin.intercept_
+
+    #regressor = ridge_regression(Xtrain,Ytrain)
+    #lin = linear_regression(Xtrain, Ytrain)
+    #regressor = cheating_regression(Xtrain,Ytrain)
+    print 'DEBUG: regressor created'
+    #Xt = lin.transform(X,threshold=None)
+    #regressor = linear_model.LassoLars(alpha=0.01,verbose=1)
+    alphas = np.logspace(-4, -1, 6)
+    regressor = linear_model.Lasso(max_iter=10000)
+    scores = [regressor.set_params(alpha=alpha).fit(Xtrain,Ytrain).score(Xtest,Ytest)
+              for alpha in alphas]
+    best_alpha = alphas[scores.index(max(scores))]
+    print best_alpha
+    regressor.alpha = best_alpha
+    regressor.fit(Xtrain,Ytrain)
+    print regressor.coef_
+
+
+    #Xvalt = lin.transform(Xval,threshold=None)
+    #print 'DEBUG: transformation of data finished'
+
+    #-----not needed for random forest
+    #lin.fit(Xtrain,Y)
+    #print 'DBUG: predictor trained'
+
+
+    #print 'regressor.coef_: ', lin.coef_
+    #print 'regressor.intercept_: ', lin.intercept_
+    #scorefunction = skmet.make_scorer(score)
+    #scores = skcv.cross_val_score(lin, X, Y, scoring = scorefunction, cv = 10)
+
+
     scorefunction = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(lin, X, Y, scoring = scorefunction, cv = 10)
+    scores = skcv.cross_val_score(regressor, X, Y, scoring = scorefunction, cv = 10)
+    print 'DEBUG: scorer created'
     print 'mean : ', np.mean(scores), ' +/- ', np.std(scores)
-    Ypredtrain = lin.predict(Xtrain)
-    Ypredtest = lin.predict(Xtest)
+    Ypredtrain = regressor.predict(Xtrain)
+    print 'DEBUG: Xtrain predicted'
+    Ypredtest = regressor.predict(Xtest)
+    print 'DEBUG: Xtest predicted'
+
     print 'lin score on Xtrain,Ytrain: ', score(Ytrain, Ypredtrain)
     print 'lin score on Xtest,Ytest: ', score(Ytest, Ypredtest)
-    Xplot = np.matrix(Xtesto)
+    #Xplot = np.matrix(Xtest)
 #   plot(Xplot[1:100, 5], Ypredtest[1:100], Ytest[1:100])
 #   plot_mean_var([x[0, 0].hour for x in Xplot[:, 0]], Ypredtest[:], Ytest[:])
 
-    forest = cheating_regression(Xtrain, Ytrain)
-    print 'score of forest (train): ', score(Ytrain, forest.predict(Xtrain))
-    print 'score of forest (test): ', score(Ytest, forest.predict(Xtest))
+    print 'score of forest (train): ', score(Ytrain, regressor.predict(Xtrain))
+    print 'score of forest (test): ', score(Ytest, regressor.predict(Xtest))
 
-    Ypred = forest.predict(forest.transform(Xval, threshold=None))
+    #Ypred = regressor.predict(regressor.transform(Xval, threshold=None))
+    Ypred = regressor.predict(Xval)
     Ypred = np.exp(Ypred) - 1
     print Ypred
     np.savetxt('project_data/validate_y.txt', Ypred)
